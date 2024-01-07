@@ -39,7 +39,6 @@ class EinstellungenBenutzer(QDialog):
         for i in range(5):
             self.lineEditNamen.append(QLineEdit())
             dialogLayoutG.addWidget(self.lineEditNamen[i], i + 1, 0)
-        self.lineEditNamen[0].setPlaceholderText("Dr. med. XY")
         for i in range(5):
             self.lineEditKuerzel.append(QLineEdit())
             self.lineEditKuerzel[i].setFixedWidth(40)

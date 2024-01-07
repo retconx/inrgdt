@@ -314,7 +314,7 @@ class MainWindow(QMainWindow):
             self.dateEditUntersuchungsdatum.userDateChanged.connect(self.dateEditUntersuchungsdatumChanged) # type: ignore
             untdatBenutzerLayoutG.addWidget(labelUntersuchungsdatum, 0, 0)
             untdatBenutzerLayoutG.addWidget(self.dateEditUntersuchungsdatum, 1, 0)
-            labelBenutzer = QLabel("Benutzer")
+            labelBenutzer = QLabel("Dokumentiert von")
             self.comboBoxBenutzer = QComboBox()
             self.comboBoxBenutzer.addItems(self.benutzernamenListe)
             aktBenNum = 0
