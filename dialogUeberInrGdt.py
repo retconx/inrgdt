@@ -23,7 +23,7 @@ class UeberInrGdt(QDialog):
         self.buttonBox.accepted.connect(self.accept) # type: ignore
 
         dialogLayoutV = QVBoxLayout()
-        labelBeschreibung = QLabel("<span style='color:rgb(0,0,200);font-weight:bold'>Programmbeschreibung:</span><br>InrGDT ist eine eigenständig plattformunabhängig lauffähige Software zur elektronischen Dokumentation des INR-Wertes sowie der Phenprocoumon-/ Warfarin-Dosierung")
+        labelBeschreibung = QLabel("<span style='color:rgb(0,0,200);font-weight:bold'>Programmbeschreibung:</span><br>InrGDT ist eine eigenständig plattformunabhängig lauffähige Software zur elektronischen Dokumentation des INR-Wertes sowie der Phenprocoumon-/ Warfarin-Dosierung via GDT-Schnittstelle in ein beliebiges Praxisverwaltungssystem.")
         labelBeschreibung.setAlignment(Qt.AlignmentFlag.AlignJustify)
         labelBeschreibung.setWordWrap(True)
         labelBeschreibung.setTextFormat(Qt.TextFormat.RichText)
