@@ -56,7 +56,7 @@ class EinstellungenImportExport(QDialog):
         groupboxImportExport.setLayout(groupboxImportExportLayout)
 
         # Groupbox Einstellungen
-        self.checkboxTextListe = ["GDT-Einstellungen", "BenutzerInnen", "LANR/Lizenzschlüssel"]
+        self.checkboxTextListe = ["GDT-Einstellungen", "Dosierungen", "BenutzerInnen", "LANR/Lizenzschlüssel"]
         self.checkboxEinstellungen = []
         self.groupboxEinstellungen = QGroupBox("Zu exportierende Einstellungen")
         self.groupboxEinstellungen.setStyleSheet("font-weight:bold")
@@ -115,7 +115,7 @@ class EinstellungenImportExport(QDialog):
                 datei = fd.selectedFiles()[0]
                 configImport = configparser.ConfigParser()
                 configImport.read(datei)
-                if "Allgemein" in configImport.sections() or "GDT" in configImport.sections() or "Benutzer" in configImport.sections() or "Erweiterungen" in configImport.sections():
+                if  "GDT" in configImport.sections() or "Marcumar" in configImport.sections() or "Benutzer" in configImport.sections() or "Erweiterungen" in configImport.sections():
                     i=0
                     for section in configImport.sections():
                         if self.checkboxEinstellungen[i].isChecked():
@@ -153,15 +153,15 @@ class EinstellungenImportExport(QDialog):
                 try:
                     with open(datei, "w") as exportfile:
                         if self.checkboxEinstellungen[0].isChecked():
-                            section = "Allgemein"
-                            configExport.add_section(section)
-                            for option in self.configIni.options(section):
-                                configExport[section][option] = self.configIni[section][option]
-                        if self.checkboxEinstellungen[1].isChecked():
                             section = "GDT"
                             configExport.add_section(section)
                             for option in self.configIni.options(section):
                                 configExport[section][option] = self.configIni[section][option]
+                        if self.checkboxEinstellungen[1].isChecked():
+                            section = "Marcumar"
+                            configExport.add_section(section)
+                            for option in self.configIni.options(section):
+                                configExport[section][option] = self.configIni[section][option]        
                         if self.checkboxEinstellungen[2].isChecked():
                             section = "Benutzer"
                             configExport.add_section(section)
