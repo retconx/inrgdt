@@ -233,16 +233,14 @@ class MainWindow(QMainWindow):
             # Formularaufbau
             wochentage = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
             mainLayoutV = QVBoxLayout()
-            kopfLayoutG = QGridLayout()
-            labelName = QLabel("Name")
-            self.lineEditName = QLineEdit(self.name)
-            self.lineEditName.setReadOnly(True)
-            labelPatId = QLabel("ID")
-            self.lineEditPatid = QLineEdit(self.patId)
-            self.lineEditPatid.setReadOnly(True)
-            labelGeburtsdatum = QLabel("Geburtsdatum")
-            self.lineEditGeburtsdatum = QLineEdit(self.geburtsdatum)
-            self.lineEditGeburtsdatum.setReadOnly(True)
+            kopfLayoutH = QHBoxLayout()
+            inrLayoutH = QHBoxLayout()
+            labelName = QLabel("Name: " + self.name)
+            labelName.setFont(self.fontGross)
+            labelPatId = QLabel("ID: " + self.patId)
+            labelPatId.setFont(self.fontGross)
+            labelGeburtsdatum = QLabel("Geburtsdatum: " + self.geburtsdatum)
+            labelGeburtsdatum.setFont(self.fontGross)
             labelInr = QLabel("INR")
             labelInr.setFont(self.fontGross)
             self.lineEditInr = QLineEdit()
@@ -255,16 +253,13 @@ class MainWindow(QMainWindow):
             self.checkBoxImmer.setFont(self.fontGross)
             self.checkBoxImmer.setChecked(self.immerextern)
             self.checkBoxImmer.clicked.connect(self.checkBoxImmerClicked)
-            kopfLayoutG.addWidget(labelName, 0, 0)
-            kopfLayoutG.addWidget(self.lineEditName, 0, 1)
-            kopfLayoutG.addWidget(labelPatId, 0, 2)
-            kopfLayoutG.addWidget(self.lineEditPatid, 0, 3)
-            kopfLayoutG.addWidget(labelGeburtsdatum, 0, 4)
-            kopfLayoutG.addWidget(self.lineEditGeburtsdatum, 0, 5)
-            kopfLayoutG.addWidget(labelInr, 1, 0)
-            kopfLayoutG.addWidget(self.lineEditInr, 1, 1)
-            kopfLayoutG.addWidget(self.checkBoxExtern, 1, 2, 1, 2)
-            kopfLayoutG.addWidget(self.checkBoxImmer, 1, 4, 1, 2)
+            kopfLayoutH.addWidget(labelName)
+            kopfLayoutH.addWidget(labelPatId)
+            kopfLayoutH.addWidget(labelGeburtsdatum)
+            inrLayoutH.addWidget(labelInr)
+            inrLayoutH.addWidget(self.lineEditInr)
+            inrLayoutH.addWidget(self.checkBoxExtern)
+            inrLayoutH.addWidget(self.checkBoxImmer)
             
             inrLayoutG = QGridLayout()
             labelWochentage = []
@@ -317,6 +312,7 @@ class MainWindow(QMainWindow):
             labelBenutzer = QLabel("Dokumentiert von")
             self.comboBoxBenutzer = QComboBox()
             self.comboBoxBenutzer.addItems(self.benutzernamenListe)
+            self.comboBoxBenutzer.currentIndexChanged.connect(self.comboBoxBenutzerIndexChanged)
             aktBenNum = 0
             if self.aktuelleBenuztzernummer < len(self.benutzernamenListe):
                 aktBenNum = self.aktuelleBenuztzernummer
@@ -331,7 +327,9 @@ class MainWindow(QMainWindow):
             self.pushButtonSenden.setEnabled(self.addOnsFreigeschaltet)
             self.pushButtonSenden.clicked.connect(self.pushButtonSendenClicked)
 
-            mainLayoutV.addLayout(kopfLayoutG)
+            mainLayoutV.addLayout(kopfLayoutH)
+            mainLayoutV.addSpacing(20)
+            mainLayoutV.addLayout(inrLayoutH)
             mainLayoutV.addLayout(inrLayoutG)
             mainLayoutV.addWidget(labelBemerkungen)
             mainLayoutV.addWidget(self.textEditBemerkungen)
@@ -547,6 +545,9 @@ class MainWindow(QMainWindow):
 
     def dateEditUntersuchungsdatumChanged(self, datum):
         self.untersuchungsdatum = datum
+
+    def comboBoxBenutzerIndexChanged(self, index):
+        self.aktuelleBenuztzernummer = index
                 
     def pushButtonSendenClicked(self):
         logger.logger.info("Daten senden geklickt")
@@ -592,6 +593,7 @@ class MainWindow(QMainWindow):
                 mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "GDT-Export nicht möglich.\nBitte überprüfen Sie die Angabe des Exportverzeichnisses.", QMessageBox.StandardButton.Ok)
                 mb.exec()
             self.configIni["Allgemein"]["immerextern"] = str(self.checkBoxImmer.isChecked())
+            self.configIni["Benutzer"]["letzter"] = str(self.aktuelleBenuztzernummer)
             try:
                 with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
                     self.configIni.write(configfile)
