@@ -1,10 +1,9 @@
-import configparser, os, sys, gdttoolsL, datetime, logger
+import configparser, os, sys, gdttoolsL, datetime
 from PySide6.QtWidgets import (
     QDialogButtonBox,
     QDialog,
     QVBoxLayout,
     QGroupBox,
-    QLabel,
     QCheckBox,
     QFileDialog,
     QRadioButton,

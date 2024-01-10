@@ -1,13 +1,12 @@
 import sys, configparser, os, datetime, shutil, logger, re
 import gdt, gdtzeile, gdttoolsL
 import dialogUeberInrGdt, dialogEinstellungenGdt, dialogEinstellungenBenutzer, dialogEinstellungenLanrLizenzschluessel, dialogEinstellungenImportExport, dialogEinstellungenDosierung
-from PySide6.QtCore import Qt, QSize, QDate, QTime, QTranslator, QLibraryInfo
-from PySide6.QtGui import QFont, QAction, QKeySequence, QIcon, QDesktopServices, QPalette, QColor
+from PySide6.QtCore import Qt, QDate, QTime, QTranslator, QLibraryInfo
+from PySide6.QtGui import QFont, QAction, QIcon, QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
     QVBoxLayout,
-    QGroupBox,
     QPushButton,
     QHBoxLayout,
     QGridLayout,

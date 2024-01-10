@@ -1,13 +1,10 @@
 import configparser, os
-from PySide6.QtCore import QSize
 from PySide6.QtWidgets import (
     QDialogButtonBox,
     QDialog,
     QVBoxLayout,
     QGridLayout,
-    QLabel,
     QCheckBox,
-    QMessageBox,
 )
 
 class EinstellungenDosierung(QDialog):

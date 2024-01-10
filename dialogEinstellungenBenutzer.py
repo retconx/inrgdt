@@ -1,5 +1,4 @@
 import configparser, os
-from PySide6.QtCore import QSize
 from PySide6.QtWidgets import (
     QDialogButtonBox,
     QDialog,
