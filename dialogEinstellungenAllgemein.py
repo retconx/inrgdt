@@ -44,7 +44,7 @@ class EinstellungenAllgemein(QDialog):
         buttonDurchsuchenArchivierungsverzeichnis= QPushButton("Durchsuchen")
         buttonDurchsuchenArchivierungsverzeichnis.setStyleSheet("font-weight:normal")
         buttonDurchsuchenArchivierungsverzeichnis.clicked.connect(self.durchsuchenArchivierungsverzeichnis)
-        self.checkBoxVorherigeDokuLaden = QCheckBox("Vorherige Doku laden")
+        self.checkBoxVorherigeDokuLaden = QCheckBox("Vorherige Dokumentation beim Programmstart laden")
         self.checkBoxVorherigeDokuLaden.setStyleSheet("font-weight:normal")
         self.checkBoxVorherigeDokuLaden.setChecked(self.vorherigeDokuLaden == "True")
         groupboxLayoutG.addWidget(labelArchivierungsverzeichnis, 0, 0, 1, 2)
