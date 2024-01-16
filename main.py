@@ -1,6 +1,6 @@
 import sys, configparser, os, datetime, shutil, logger, re
 import gdt, gdtzeile, gdttoolsL
-import dialogUeberInrGdt, dialogEinstellungenGdt, dialogEinstellungenBenutzer, dialogEinstellungenLanrLizenzschluessel, dialogEinstellungenImportExport, dialogEinstellungenDosierung
+import dialogUeberInrGdt, dialogEinstellungenAllgemein, dialogEinstellungenGdt, dialogEinstellungenBenutzer, dialogEinstellungenLanrLizenzschluessel, dialogEinstellungenImportExport, dialogEinstellungenDosierung
 from PySide6.QtCore import Qt, QDate, QTime, QTranslator, QLibraryInfo
 from PySide6.QtGui import QFont, QAction, QIcon, QDesktopServices
 from PySide6.QtWidgets import (
@@ -121,12 +121,15 @@ class MainWindow(QMainWindow):
         self.aktuelleBenuztzernummer = int(self.configIni["Benutzer"]["letzter"])
         self.dosen = self.configIni["Marcumar"]["dosen"].split("::")
 
-        # Nachträglich hinzufefügte Options
-        # 3.10.0
-        # self.benutzeruebernehmen = False
-        # if self.configIni.has_option("Allgemein", "benutzeruebernehmen"):
-        #     self.benutzeruebernehmen = (self.configIni["Allgemein"]["benutzeruebernehmen"] == "1")
-        # /Nachträglich hinzufefügte Options
+        ## Nachträglich hinzufefügte Options
+        # 1.1.0
+        self.archivierungspfad = ""
+        if self.configIni.has_option("Allgemein", "archivierungspfad"):
+            self.archivierungspfad = self.configIni["Allgemein"]["archivierungspfad"]
+        self.vorherigedokuladen = False
+        if self.configIni.has_option("Allgemein", "vorherigedokuladen"):
+            self.vorherigedokuladen = self.configIni["Allgemein"]["vorherigedokuladen"] == "True"
+        ## /Nachträglich hinzufefügte Options
 
         z = self.configIni["GDT"]["zeichensatz"]
         self.zeichensatz = gdt.GdtZeichensatz.IBM_CP437
@@ -165,17 +168,19 @@ class MainWindow(QMainWindow):
                 # Version aktualisieren
                 self.configIni["Allgemein"]["version"] = configIniBase["Allgemein"]["version"]
                 self.configIni["Allgemein"]["releasedatum"] = configIniBase["Allgemein"]["releasedatum"] 
-                # config.ini aktualisieren
-                # 3.9.0 -> 3.10.0: ["Allgemein"]["benutzeruebernehmen"], ["Allgemein"]["einrichtunguebernehmen"] und ["Benutzer"]["einrichtung"] hinzufügen
-                # if not self.configIni.has_option("Allgemein", "benutzeruebernehmen"):
-                #     self.configIni["Allgemein"]["benutzeruebernehmen"] = "0"
-                # /config.ini aktualisieren
+                ## config.ini aktualisieren
+                # 1.0.2 -> 1.1.0: ["Allgemein"]["archivierungspfad"] und ["Allgemein"]["vorherigedokuladen"] hinzufügen
+                if not self.configIni.has_option("Allgemein", "archivierungspfad"):
+                    self.configIni["Allgemein"]["archivierungspfad"] = ""
+                if not self.configIni.has_option("Allgemein", "vorherigedokuladen"):
+                    self.configIni["Allgemein"]["vorherigedokuladen"] = "False"
+                ## /config.ini aktualisieren
 
                 with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
                     self.configIni.write(configfile)
                 self.version = self.configIni["Allgemein"]["version"]
                 logger.logger.info("Version auf " + self.version + " aktualisiert")
-                mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von InrGDT", "InrGDT wurde erfolgreich auf Version " + self.version + " aktualisiert.<br />Falls InrGDT Ihren Praxisalltag erleichtert, würde ich mich über eine kleine Anerkennung freuen. Unter <a href='https://gdttools.de/inrgdt.php#spende'>gdtools.de</a> finden Sie Informationen über die Möglichkeit einer Spende. Dankeschön! &#x1f609;", QMessageBox.StandardButton.Ok)
+                mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von InrGDT", "InrGDT wurde erfolgreich auf Version " + self.version + " aktualisiert.", QMessageBox.StandardButton.Ok)
                 mb.setTextFormat(Qt.TextFormat.RichText)
                 mb.exec()
         except:
@@ -191,7 +196,6 @@ class MainWindow(QMainWindow):
         if jahr > 2024:
             copyrightJahre = "2024-" + str(jahr)
         self.setWindowTitle("InrGDT V" + self.version + " (\u00a9 Fabian Treusch - GDT-Tools " + copyrightJahre + ")")
-        self.setFixedWidth(600)
         self.fontNormal = QFont()
         self.fontNormal.setBold(False)
         self.fontBold = QFont()
@@ -201,6 +205,9 @@ class MainWindow(QMainWindow):
         self.fontBoldGross.setPixelSize(16)
         self.fontGross = QFont()
         self.fontGross.setPixelSize(16)
+        self.fontGrossStrikeOut = QFont()
+        self.fontGrossStrikeOut.setPixelSize(16)
+        self.fontGrossStrikeOut.setStrikeOut(True)
 
         # GDT-Datei laden
         gd = gdt.GdtDatei()
@@ -213,7 +220,7 @@ class MainWindow(QMainWindow):
             senderId = self.configIni["GDT"]["idpraxisedv"]
             if senderId == "":
                 senderId = None
-            gd.laden(self.gdtImportVerzeichnis + "/" + self.kuerzelinrgdt + self.kuerzelpraxisedv + ".gdt", self.zeichensatz, senderId)
+            gd.laden(os.path.join(self.gdtImportVerzeichnis, self.kuerzelinrgdt + self.kuerzelpraxisedv + ".gdt"), self.zeichensatz, senderId)
             self.patId = str(gd.getInhalt("3000"))
             self.name = str(gd.getInhalt("3102")) + " " + str(gd.getInhalt("3101"))
             logger.logger.info("PatientIn " + self.name + " (ID: " + self.patId + ") geladen")
@@ -230,9 +237,9 @@ class MainWindow(QMainWindow):
             self.widget.installEventFilter(self)
 
             # Formularaufbau
-            wochentage = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+            self.wochentage = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
             mainLayoutV = QVBoxLayout()
-            kopfLayoutH = QHBoxLayout()
+            kopfLayoutG = QGridLayout()
             inrLayoutH = QHBoxLayout()
             labelName = QLabel("Name: " + self.name)
             labelName.setFont(self.fontGross)
@@ -240,6 +247,14 @@ class MainWindow(QMainWindow):
             labelPatId.setFont(self.fontGross)
             labelGeburtsdatum = QLabel("Geburtsdatum: " + self.geburtsdatum)
             labelGeburtsdatum.setFont(self.fontGross)
+            labelDokumentationVom = QLabel("Dokumentation vom:")
+            labelDokumentationVom.setFont(self.fontGross)
+            self.labelArchivdatum = QLabel("--.--.----")
+            self.labelArchivdatum.setFont(self.fontGross)
+            self.pushButtonArchivierungLaden = QPushButton("\U0001f504")
+            self.pushButtonArchivierungLaden.setFont(self.fontGross)
+            self.pushButtonArchivierungLaden.setEnabled(False)
+            self.pushButtonArchivierungLaden.clicked.connect(self.pushButtonArchivierungLadenClicked)
             labelInr = QLabel("INR")
             labelInr.setFont(self.fontGross)
             self.lineEditInr = QLineEdit()
@@ -252,9 +267,12 @@ class MainWindow(QMainWindow):
             self.checkBoxImmer.setFont(self.fontGross)
             self.checkBoxImmer.setChecked(self.immerextern)
             self.checkBoxImmer.clicked.connect(self.checkBoxImmerClicked)
-            kopfLayoutH.addWidget(labelName)
-            kopfLayoutH.addWidget(labelPatId)
-            kopfLayoutH.addWidget(labelGeburtsdatum)
+            kopfLayoutG.addWidget(labelName, 0, 0)
+            kopfLayoutG.addWidget(labelPatId, 0, 1)
+            kopfLayoutG.addWidget(labelGeburtsdatum, 0, 2)
+            kopfLayoutG.addWidget(labelDokumentationVom, 1, 0)
+            kopfLayoutG.addWidget(self.labelArchivdatum, 1, 1)
+            kopfLayoutG.addWidget(self.pushButtonArchivierungLaden, 1, 2, alignment=Qt.AlignmentFlag.AlignLeft)
             inrLayoutH.addWidget(labelInr)
             inrLayoutH.addWidget(self.lineEditInr)
             inrLayoutH.addWidget(self.checkBoxExtern)
@@ -266,7 +284,7 @@ class MainWindow(QMainWindow):
             pushButtonDosenTemp = []
             self.pushButtonDosenAlle = []
             for wt in range(7):
-                labelWochentage.append(QLabel(wochentage[wt]))
+                labelWochentage.append(QLabel(self.wochentage[wt]))
                 labelWochentage[wt].setFont(self.fontGross)
                 inrLayoutG.addWidget(labelWochentage[wt], 0, wt, 1, 1, Qt.AlignmentFlag.AlignCenter)
             labelAlle = QLabel("Alle")
@@ -326,14 +344,15 @@ class MainWindow(QMainWindow):
             self.pushButtonSenden.setEnabled(self.addOnsFreigeschaltet)
             self.pushButtonSenden.clicked.connect(self.pushButtonSendenClicked)
 
-            mainLayoutV.addLayout(kopfLayoutH)
-            mainLayoutV.addSpacing(20)
+            mainLayoutV.addLayout(kopfLayoutG)
+            mainLayoutV.addSpacing(10)
             mainLayoutV.addLayout(inrLayoutH)
             mainLayoutV.addLayout(inrLayoutG)
             mainLayoutV.addWidget(labelBemerkungen)
             mainLayoutV.addWidget(self.textEditBemerkungen)
             mainLayoutV.addLayout(untdatBenutzerLayoutG)
             mainLayoutV.addWidget(self.pushButtonSenden)
+            mainLayoutV.addSpacing(10)
             self.widget.setLayout(mainLayoutV)
 
             self.setCentralWidget(self.widget)
@@ -344,17 +363,19 @@ class MainWindow(QMainWindow):
             anwendungMenu = menubar.addMenu("")
             aboutAction = QAction(self)
             aboutAction.setMenuRole(QAction.MenuRole.AboutRole)
-            aboutAction.triggered.connect(self.ueberInrGdt) # type: ignore
+            aboutAction.triggered.connect(self.ueberInrGdt) 
             updateAction = QAction("Auf Update prüfen", self)
             updateAction.setMenuRole(QAction.MenuRole.ApplicationSpecificRole)
-            updateAction.triggered.connect(self.updatePruefung) # type: ignore
+            updateAction.triggered.connect(self.updatePruefung) 
             einstellungenMenu = menubar.addMenu("Einstellungen")
+            einstellungenAllgemeinAction = QAction("Allgemeine Einstellungen", self)
+            einstellungenAllgemeinAction.triggered.connect(lambda checked=False, neustartfrage=True: self.einstellungenAllgmein(checked, True))
             einstellungenGdtAction = QAction("GDT-Einstellungen", self)
-            einstellungenGdtAction.triggered.connect(lambda checked=False, neustartfrage=True: self.einstellungenGdt(checked, True)) # type: ignore
+            einstellungenGdtAction.triggered.connect(lambda checked=False, neustartfrage=True: self.einstellungenGdt(checked, True))
             einstellungenBenutzerAction = QAction("BenutzerInnen verwalten", self)
-            einstellungenBenutzerAction.triggered.connect(lambda checked=False, neustartfrage=True: self.einstellungenBenutzer(checked, True)) # type: ignore
+            einstellungenBenutzerAction.triggered.connect(lambda checked=False, neustartfrage=True: self.einstellungenBenutzer(checked, True)) 
             einstellungenDosierungAction = QAction("Dosierungen verwalten", self)
-            einstellungenDosierungAction.triggered.connect(lambda checked=False, neustartfrage=True: self.einstellungenDosierung(checked, True)) # type: ignore
+            einstellungenDosierungAction.triggered.connect(lambda checked=False, neustartfrage=True: self.einstellungenDosierung(checked, True)) 
 
             einstellungenErweiterungenAction = QAction("LANR/Lizenzschlüssel", self)
             einstellungenErweiterungenAction.triggered.connect(lambda checked=False, neustartfrage=True: self.einstellungenLanrLizenzschluessel(checked, True)) # type: ignore
@@ -374,6 +395,7 @@ class MainWindow(QMainWindow):
             
             anwendungMenu.addAction(aboutAction)
             anwendungMenu.addAction(updateAction)
+            einstellungenMenu.addAction(einstellungenAllgemeinAction)
             einstellungenMenu.addAction(einstellungenGdtAction)
             einstellungenMenu.addAction(einstellungenBenutzerAction)
             einstellungenMenu.addAction(einstellungenDosierungAction)
@@ -394,8 +416,71 @@ class MainWindow(QMainWindow):
                 mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Updateprüfung nicht möglich.\nBitte überprüfen Sie Ihre Internetverbindung.", QMessageBox.StandardButton.Ok)
                 mb.exec()
                 logger.logger.warning("Updateprüfung nicht möglich: " + str(e))
+            
+            # Gegebenenfalls vorherige Doku laden
+            if self.vorherigedokuladen:
+                self.mitVorherigerUntersuchungAusfuellen()
+            
         else:
             sys.exit()
+
+    def mitVorherigerUntersuchungAusfuellen(self):
+        for dosis in range(len(self.dosen)):
+            for wt in range(7):
+                self.pushButtonDosen[dosis][wt].setChecked(False)
+        pfad = os.path.join(self.archivierungspfad, self.patId)
+        doku = ""
+        if os.path.exists(self.archivierungspfad):
+            if os.path.exists(pfad) and len(os.listdir(pfad)) > 0:
+                dokus = [d for d in os.listdir(pfad) if os.path.isfile(os.path.join(pfad, d))]
+                dokus.sort()
+                try:
+                    with open(os.path.join(pfad, dokus[len(dokus) - 1]), "r") as d:
+                        doku = d.read().strip()
+                except Exception as e:
+                    mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Fehler beim Lesen der vorherigen Dokumentation: " + str(e) + "\nSoll InrGDT neu gestartet werden?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+                    mb.setDefaultButton(QMessageBox.StandardButton.Yes)
+                    mb.button(QMessageBox.StandardButton.Yes).setText("Ja")
+                    mb.button(QMessageBox.StandardButton.No).setText("Nein")
+                    if mb.exec() == QMessageBox.StandardButton.Yes:
+                        os.execl(sys.executable, __file__, *sys.argv)
+        else:
+            mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Das Archivierungsverzeichnis " + self.archivierungspfad + "  ist nicht erreichbar. Vorherige Assessments können daher nicht geladen werden.\nFalls es sich um eine Netzwerkfreigabe handeln sollte, stellen Sie die entsprechende Verbindung sicher und starten InrGDT neu.\nSoll InrGDT neu gestartet werden?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            mb.setDefaultButton(QMessageBox.StandardButton.Yes)
+            mb.button(QMessageBox.StandardButton.Yes).setText("Ja")
+            mb.button(QMessageBox.StandardButton.No).setText("Nein")
+            if mb.exec() == QMessageBox.StandardButton.Yes:
+                os.execl(sys.executable, __file__, *sys.argv)  
+                
+        if doku != "" and len(doku) != 50:
+            mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von InrGDT", "Die vorherige Dokumentation von ist nicht lesbar.", QMessageBox.StandardButton.Ok)
+            mb.exec()
+            doku = ""
+        if doku != "" and self.addOnsFreigeschaltet:
+            # Untersuchungsdatum
+            zurVerfuegungStehendeDosenFloat = []
+            for dosis in self.dosen:
+                zurVerfuegungStehendeDosenFloat.append(float(dosis))
+            self.archivierungsUntersuchungsdatum = doku[:2] + "." + doku[2:4] + "." + doku[4:8]
+            archivierungsdosen = doku.split("::")
+            nichtGefundeneArchivdosen = []
+            for wt in range(7):
+                if float(archivierungsdosen[wt + 1].replace(",", ".")) in zurVerfuegungStehendeDosenFloat:
+                    dosisIndex = zurVerfuegungStehendeDosenFloat.index(float(archivierungsdosen[wt + 1].replace(",", ".")))
+                    self.pushButtonDosen[dosisIndex][wt].setChecked(True)
+                else:
+                    nichtGefundeneArchivdosen.append(self.wochentage[wt] + ": " + archivierungsdosen[wt + 1].replace(",25", "\u00bc").replace(",5", "\u00bd").replace(",75", "\u00be").replace(",", "").replace("0", ""))
+            self.labelArchivdatum.setText(self.archivierungsUntersuchungsdatum)
+            self.pushButtonArchivierungLaden.setToolTip("Dokumentation vom " + self.archivierungsUntersuchungsdatum + " wiederherstellen")
+            self.pushButtonArchivierungLaden.setEnabled(True)
+            if len(nichtGefundeneArchivdosen) > 0:
+                mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von InrGDT", "Nicht alle archivierten Tagesdosen können wegen fehlender Dosisbuttons wiederhergestellt werden:\n" + "\n".join(nichtGefundeneArchivdosen), QMessageBox.StandardButton.Ok)
+                mb.exec()
+
+    def pushButtonArchivierungLadenClicked(self):
+        self.mitVorherigerUntersuchungAusfuellen()
+        self.labelArchivdatum.setText(self.archivierungsUntersuchungsdatum)
+        self.labelArchivdatum.setFont(self.fontGross)
 
     def updatePruefung(self, meldungNurWennUpdateVerfuegbar = False):
         response = requests.get("https://api.github.com/repos/retconx/inrgdt/releases/latest")
@@ -433,7 +518,22 @@ class MainWindow(QMainWindow):
             mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Das Log-Verzeichnis wurde nicht gefunden.", QMessageBox.StandardButton.Ok)
             mb.exec() 
 
-    def einstellungenGdt(self, checked, neustartfrage = False):
+    def einstellungenAllgmein(self, checked, neustartfrage=False):
+        de = dialogEinstellungenAllgemein.EinstellungenAllgemein(self.configPath)
+        if de.exec() == 1:
+            self.configIni["Allgemein"]["archivierungspfad"] = de.lineEditArchivierungsverzeichnis.text()
+            self.configIni["Allgemein"]["vorherigedokuladen"] = str(de.checkBoxVorherigeDokuLaden.isChecked())
+            with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
+                self.configIni.write(configfile)
+            if neustartfrage:
+                mb = QMessageBox(QMessageBox.Icon.Question, "Hinweis von InrGDT", "Damit die Einstellungsänderungen wirksam werden, sollte InrGDT neu gestartet werden.\nSoll InrGDT jetzt neu gestartet werden?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+                mb.setDefaultButton(QMessageBox.StandardButton.Yes)
+                mb.button(QMessageBox.StandardButton.Yes).setText("Ja")
+                mb.button(QMessageBox.StandardButton.No).setText("Nein")
+                if mb.exec() == QMessageBox.StandardButton.Yes:
+                    os.execl(sys.executable, __file__, *sys.argv)
+
+    def einstellungenGdt(self, checked, neustartfrage=False):
         de = dialogEinstellungenGdt.EinstellungenGdt(self.configPath)
         if de.exec() == 1:
             self.configIni["GDT"]["idinrgdt"] = de.lineEditInrGdtId.text()
@@ -530,11 +630,15 @@ class MainWindow(QMainWindow):
             self.checkBoxExtern.setChecked(True)
 
     def pushButtonDosisClicked(self, dosiszeile, wochentagspalte):
+        if self.labelArchivdatum.text() != "--.--.----":
+            self.labelArchivdatum.setFont(self.fontGrossStrikeOut)
         for zeile in range(len(self.dosen)):
             if zeile != dosiszeile:
                 self.pushButtonDosen[zeile][wochentagspalte].setChecked(False)
 
     def pushButtonAlleClicked(self, checked, dosiszeile):
+        if self.labelArchivdatum.text() != "--.--.----":
+            self.labelArchivdatum.setFont(self.fontGrossStrikeOut)
         for zeile in range(len(self.dosen)):
             for wt in range(7):
                 self.pushButtonDosen[zeile][wt].setChecked(False)
@@ -557,24 +661,28 @@ class MainWindow(QMainWindow):
             logger.logger.info("GdtDatei-Instanz erzeugt")
             gd.erzeugeGdtDatei(sh.getSatzheader())
             logger.logger.info("Satzheader 6310 erzeugt")
-            self.datum = "{:>02}".format(str(self.dateEditUntersuchungsdatum.date().day())) + "{:>02}".format(str(self.dateEditUntersuchungsdatum.date().month())) + str(self.dateEditUntersuchungsdatum.date().year())
+            untersuchungsdatum = "{:>02}".format(str(self.dateEditUntersuchungsdatum.date().day())) + "{:>02}".format(str(self.dateEditUntersuchungsdatum.date().month())) + str(self.dateEditUntersuchungsdatum.date().year())
             jetzt = QTime().currentTime()
             uhrzeit = "{:>02}".format(str(jetzt.hour())) + "{:>02}".format(str(jetzt.minute())) + str(jetzt.second())
             logger.logger.info("Untersuchungsdatum/ -uhrzeit festgelegt")
-            gd.addZeile("6200", self.datum)
+            gd.addZeile("6200", untersuchungsdatum)
             gd.addZeile("6201", uhrzeit)
             gd.addZeile("8402", "ALLG00")
 
             # Befund
             befundzeile = "{:.1f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",")
-            befundzeile += "    "
+            befundzeile += "     "
             wochendosis = 0
             wochendosen = []
+            nichtAlleWochentage = False
             for wt in range(7):
                 for dosis in range(len(self.dosen)):
                     if self.pushButtonDosen[dosis][wt].isChecked():
                         wochendosen.append("{:.2f}".format(float(self.dosen[dosis])).replace(".", ","))
                         wochendosis += float(self.dosen[dosis])
+                if len(wochendosen) != wt + 1:
+                    nichtAlleWochentage = True
+                    wochendosen.append("0,00")
             befundzeile += "  -  ".join(wochendosen)
             externBenutzer = self.benutzerkuerzelListe[self.aktuelleBenuztzernummer]
             if self.checkBoxExtern.isChecked():
@@ -585,21 +693,55 @@ class MainWindow(QMainWindow):
             # Benutzer
             gd.addZeile("6227", self.textEditBemerkungen.toPlainText())
             logger.logger.info("Befund und Kommentar erzeugt")
-                
-            # GDT-Datei exportieren
-            if not gd.speichern(self.gdtExportVerzeichnis + "/" + self.kuerzelpraxisedv + self.kuerzelinrgdt + ".gdt", self.zeichensatz):
-                logger.logger.error("Fehler bei GDT-Dateiexport nach " + self.gdtExportVerzeichnis + "/" + self.kuerzelpraxisedv + self.kuerzelinrgdt + ".gdt")
-                mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "GDT-Export nicht möglich.\nBitte überprüfen Sie die Angabe des Exportverzeichnisses.", QMessageBox.StandardButton.Ok)
-                mb.exec()
-            self.configIni["Allgemein"]["immerextern"] = str(self.checkBoxImmer.isChecked())
-            self.configIni["Benutzer"]["letzter"] = str(self.aktuelleBenuztzernummer)
-            try:
-                with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
-                    self.configIni.write(configfile)
-                    logger.logger.info("Allgemein/immerextern in config.ini auf " + str(self.checkBoxImmer.isChecked()) + " gesetzt")
-            except:
-                logger.logger.error("Fehler beim Speichern von Allgemein/immerextern in config.ini")
-            sys.exit()
+            datenSendenOk = True
+            if nichtAlleWochentage:
+                mb = QMessageBox(QMessageBox.Icon.Question, "Hinweis von InrGDT", "Nicht für jeden Wochentag wurde eine Dosis angegeben.\nSollen die Daten dennoch übertragen werden? In diesem Fall wird die Dosis an den betroffenen Wochentagen auf 0 gesetzt.", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+                mb.setDefaultButton(QMessageBox.StandardButton.No)
+                mb.button(QMessageBox.StandardButton.Yes).setText("Ja")
+                mb.button(QMessageBox.StandardButton.No).setText("Nein")
+                if mb.exec() == QMessageBox.StandardButton.No:
+                        datenSendenOk = False
+            if datenSendenOk:
+                # GDT-Datei exportieren
+                    if not gd.speichern(os.path.join(self.gdtExportVerzeichnis, self.kuerzelpraxisedv + self.kuerzelinrgdt + ".gdt"), self.zeichensatz):
+                        logger.logger.error("Fehler bei GDT-Dateiexport nach " + self.gdtExportVerzeichnis + "/" + self.kuerzelpraxisedv + self.kuerzelinrgdt + ".gdt")
+                        mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "GDT-Export nicht möglich.\nBitte überprüfen Sie die Angabe des Exportverzeichnisses.", QMessageBox.StandardButton.Ok)
+                        mb.exec()
+                    self.configIni["Allgemein"]["immerextern"] = str(self.checkBoxImmer.isChecked())
+                    self.configIni["Benutzer"]["letzter"] = str(self.aktuelleBenuztzernummer)
+                    try:
+                        with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
+                            self.configIni.write(configfile)
+                            logger.logger.info("Allgemein/immerextern in config.ini auf " + str(self.checkBoxImmer.isChecked()) + " gesetzt")
+                        # Archivieren
+                        zusammenfassung = untersuchungsdatum + "::" + "::".join(wochendosen)
+                        if self.archivierungspfad != "":
+                            if os.path.exists(self.archivierungspfad):
+                                speicherdatum = str(self.dateEditUntersuchungsdatum.date().year()) + "{:>02}".format(str(self.dateEditUntersuchungsdatum.date().month())) + "{:>02}".format(str(self.dateEditUntersuchungsdatum.date().day()))
+                                try:
+                                    if not os.path.exists(self.archivierungspfad + "/" + self.patId):
+                                        os.mkdir(self.archivierungspfad + "/" + self.patId, 0o777)
+                                        logger.logger.info("Archivierungsverzeichnis für PatId " + self.patId + " erstellt")
+                                    with open(self.archivierungspfad + "/" + self.patId + "/" + speicherdatum + "_" + self.patId + ".ina", "w") as zf:
+                                        zf.write(zusammenfassung)
+                                        logger.logger.info("Doku für PatId " + self.patId + " archiviert")
+                                except IOError as e:
+                                    logger.logger.error("IO-Fehler beim Speichern der Doku von PatId " + self.patId + ": " + str(e))
+                                    mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Fehler beim Speichern der Dokumentation\n" + str(e), QMessageBox.StandardButton.Ok)
+                                    mb.exec()
+                                except:
+                                    logger.logger.error("Nicht-IO-Fehler beim Speichern der Doku von PatId " + self.patId)
+                                    raise
+                            else:
+                                logger.logger.warning("Dokuverzeichnis existiert nicht")
+                                mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Speichern der Dokumentation nicht möglich\nBitte überprüfen Sie die Angabe des Dokumentations-Speicherverzeichnisses.", QMessageBox.StandardButton.Ok)
+                                mb.exec()
+                        else:
+                            logger.logger.info("Nicht archiviert, da Archivierungspfad nicht festgelegt")
+                    except:
+                        logger.logger.error("Fehler beim Speichern von Allgemein/immerextern in config.ini")
+                    #sys.exit()
+                    self.close()
         elif self.patId != "":
             mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von InrGDT", "INR-Eingabe unzulässig", QMessageBox.StandardButton.Ok)
             mb.exec()
@@ -621,5 +763,4 @@ app.installTranslator(qt)
 app.setWindowIcon(QIcon(os.path.join(basedir, "icons/program.png")))
 window = MainWindow()
 window.show()
-
 app.exec()

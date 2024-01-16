@@ -42,7 +42,6 @@ class EinstellungenGdt(QDialog):
         self.buttonBox.rejected.connect(self.reject) # type:ignore
 
         dialogLayoutV = QVBoxLayout()
-        groupboxLayoutH = QHBoxLayout()
         groupboxLayoutG = QGridLayout()
         # Groupbox GDT-IDs
         groupboxGdtIds = QGroupBox("GDT-IDs (8 Zeichen)")
