@@ -158,7 +158,8 @@ class MainWindow(QMainWindow):
                 self.einstellungenLanrLizenzschluessel(False)
                 self.einstellungenGdt(False)
                 self.einstellungenBenutzer(False)
-                self.einstellungenDosierung(False, True)
+                self.einstellungenDosierung(False)
+                self.einstellungenAllgmein(False, True)
 
         # Version vergleichen und gegebenenfalls aktualisieren
         configIniBase = configparser.ConfigParser()
@@ -740,8 +741,7 @@ class MainWindow(QMainWindow):
                             logger.logger.info("Nicht archiviert, da Archivierungspfad nicht festgelegt")
                     except:
                         logger.logger.error("Fehler beim Speichern von Allgemein/immerextern in config.ini")
-                    #sys.exit()
-                    self.close()
+                    sys.exit()
         elif self.patId != "":
             mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von InrGDT", "INR-Eingabe unzulässig", QMessageBox.StandardButton.Ok)
             mb.exec()
