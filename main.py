@@ -1,6 +1,6 @@
 import sys, configparser, os, datetime, shutil, logger, re
 import gdt, gdtzeile, gdttoolsL
-import dialogUeberInrGdt, dialogEinstellungenAllgemein, dialogEinstellungenGdt, dialogEinstellungenBenutzer, dialogEinstellungenLanrLizenzschluessel, dialogEinstellungenImportExport, dialogEinstellungenDosierung
+import dialogUeberInrGdt, dialogEinstellungenAllgemein, dialogEinstellungenGdt, dialogEinstellungenBenutzer, dialogEinstellungenLanrLizenzschluessel, dialogEinstellungenImportExport, dialogEinstellungenDosierung, inrPdf
 from PySide6.QtCore import Qt, QDate, QTime, QTranslator, QLibraryInfo
 from PySide6.QtGui import QFont, QAction, QIcon, QDesktopServices
 from PySide6.QtWidgets import (
@@ -129,6 +129,10 @@ class MainWindow(QMainWindow):
         self.vorherigedokuladen = False
         if self.configIni.has_option("Allgemein", "vorherigedokuladen"):
             self.vorherigedokuladen = self.configIni["Allgemein"]["vorherigedokuladen"] == "True"
+        # 1.2.0
+        self.einrichtungsname = ""
+        if self.configIni.has_option("Allgemein", "einrichtungsname"):
+            self.einrichtungsname = self.configIni["Allgemein"]["einrichtungsname"]
         ## /Nachträglich hinzufefügte Options
 
         z = self.configIni["GDT"]["zeichensatz"]
@@ -175,6 +179,9 @@ class MainWindow(QMainWindow):
                     self.configIni["Allgemein"]["archivierungspfad"] = ""
                 if not self.configIni.has_option("Allgemein", "vorherigedokuladen"):
                     self.configIni["Allgemein"]["vorherigedokuladen"] = "False"
+                # 1.1.6 -> 1.2.0 ["Allgemein"]["einrichtungsname"] hinzufügen
+                if not self.configIni.has_option("Allgemein", "einrichtungsname"):
+                    self.configIni["Allgemein"]["einrichtungsname"] = ""
                 ## /config.ini aktualisieren
 
                 with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
@@ -248,7 +255,7 @@ class MainWindow(QMainWindow):
             labelPatId.setFont(self.fontGross)
             labelGeburtsdatum = QLabel("Geburtsdatum: " + self.geburtsdatum)
             labelGeburtsdatum.setFont(self.fontGross)
-            labelDokumentationVom = QLabel("Dokumentation vom:")
+            labelDokumentationVom = QLabel("Zuletzt dokumentiert:")
             labelDokumentationVom.setFont(self.fontGross)
             self.labelArchivdatum = QLabel("--.--.----")
             self.labelArchivdatum.setFont(self.fontGross)
@@ -318,7 +325,7 @@ class MainWindow(QMainWindow):
 
             # Untersuchungsdatum und Benutzer
             untdatBenutzerLayoutG = QGridLayout()
-            labelUntersuchungsdatum = QLabel("Untersuchungsdatum")
+            labelUntersuchungsdatum = QLabel("Untersuchungsdatum:")
             self.untersuchungsdatum = QDate().currentDate()
             self.dateEditUntersuchungsdatum = QDateEdit()
             self.dateEditUntersuchungsdatum.setDate(self.untersuchungsdatum)
@@ -327,7 +334,7 @@ class MainWindow(QMainWindow):
             self.dateEditUntersuchungsdatum.userDateChanged.connect(self.dateEditUntersuchungsdatumChanged) # type: ignore
             untdatBenutzerLayoutG.addWidget(labelUntersuchungsdatum, 0, 0)
             untdatBenutzerLayoutG.addWidget(self.dateEditUntersuchungsdatum, 1, 0)
-            labelBenutzer = QLabel("Dokumentiert von")
+            labelBenutzer = QLabel("Dokumentiert von:")
             self.comboBoxBenutzer = QComboBox()
             self.comboBoxBenutzer.addItems(self.benutzernamenListe)
             self.comboBoxBenutzer.currentIndexChanged.connect(self.comboBoxBenutzerIndexChanged)
@@ -335,8 +342,10 @@ class MainWindow(QMainWindow):
             if self.aktuelleBenuztzernummer < len(self.benutzernamenListe):
                 aktBenNum = self.aktuelleBenuztzernummer
             self.comboBoxBenutzer.setCurrentIndex(aktBenNum)
-            untdatBenutzerLayoutG.addWidget(labelBenutzer, 0, 1)
+            untdatBenutzerLayoutG.addWidget(labelBenutzer, 0, 1, 1, 2)
             untdatBenutzerLayoutG.addWidget(self.comboBoxBenutzer, 1, 1)
+            self.checkBoxPdfErstellen = QCheckBox("PDF-Plan erstellen")
+            untdatBenutzerLayoutG.addWidget(self.checkBoxPdfErstellen, 1, 2)
 
             # Senden-Button
             self.pushButtonSenden = QPushButton("Daten senden")
@@ -522,6 +531,7 @@ class MainWindow(QMainWindow):
     def einstellungenAllgmein(self, checked, neustartfrage=False):
         de = dialogEinstellungenAllgemein.EinstellungenAllgemein(self.configPath)
         if de.exec() == 1:
+            self.configIni["Allgemein"]["einrichtungsname"] = de.lineEditEinrichtungsname.text()
             self.configIni["Allgemein"]["archivierungspfad"] = de.lineEditArchivierungsverzeichnis.text()
             self.configIni["Allgemein"]["vorherigedokuladen"] = str(de.checkBoxVorherigeDokuLaden.isChecked())
             with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
@@ -669,6 +679,12 @@ class MainWindow(QMainWindow):
             gd.addZeile("6200", untersuchungsdatum)
             gd.addZeile("6201", uhrzeit)
             gd.addZeile("8402", "ALLG00")
+            # PDF hinzufügen
+            if self.checkBoxPdfErstellen.isChecked():
+                gd.addZeile("6302", "inr")
+                gd.addZeile("6303", "pdf")
+                gd.addZeile("6304", "Marcumar-Dosierungsplan")
+                gd.addZeile("6305", os.path.join(basedir, "pdf/inr_temp.pdf"))
 
             # Befund
             befundzeile = "{:.1f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",")
@@ -703,45 +719,83 @@ class MainWindow(QMainWindow):
                 if mb.exec() == QMessageBox.StandardButton.No:
                         datenSendenOk = False
             if datenSendenOk:
-                # GDT-Datei exportieren
-                    if not gd.speichern(os.path.join(self.gdtExportVerzeichnis, self.kuerzelpraxisedv + self.kuerzelinrgdt + ".gdt"), self.zeichensatz):
-                        logger.logger.error("Fehler bei GDT-Dateiexport nach " + self.gdtExportVerzeichnis + "/" + self.kuerzelpraxisedv + self.kuerzelinrgdt + ".gdt")
-                        mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "GDT-Export nicht möglich.\nBitte überprüfen Sie die Angabe des Exportverzeichnisses.", QMessageBox.StandardButton.Ok)
-                        mb.exec()
-                    self.configIni["Allgemein"]["immerextern"] = str(self.checkBoxImmer.isChecked())
-                    self.configIni["Benutzer"]["letzter"] = str(self.aktuelleBenuztzernummer)
-                    try:
-                        with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
-                            self.configIni.write(configfile)
-                            logger.logger.info("Allgemein/immerextern in config.ini auf " + str(self.checkBoxImmer.isChecked()) + " gesetzt")
-                        # Archivieren
-                        zusammenfassung = untersuchungsdatum + "::" + "::".join(wochendosen)
-                        if self.archivierungspfad != "":
-                            if os.path.exists(self.archivierungspfad):
-                                speicherdatum = str(self.dateEditUntersuchungsdatum.date().year()) + "{:>02}".format(str(self.dateEditUntersuchungsdatum.date().month())) + "{:>02}".format(str(self.dateEditUntersuchungsdatum.date().day()))
-                                try:
-                                    if not os.path.exists(self.archivierungspfad + "/" + self.patId):
-                                        os.mkdir(self.archivierungspfad + "/" + self.patId, 0o777)
-                                        logger.logger.info("Archivierungsverzeichnis für PatId " + self.patId + " erstellt")
-                                    with open(self.archivierungspfad + "/" + self.patId + "/" + speicherdatum + "_" + self.patId + ".ina", "w") as zf:
-                                        zf.write(zusammenfassung)
-                                        logger.logger.info("Doku für PatId " + self.patId + " archiviert")
-                                except IOError as e:
-                                    logger.logger.error("IO-Fehler beim Speichern der Doku von PatId " + self.patId + ": " + str(e))
-                                    mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Fehler beim Speichern der Dokumentation\n" + str(e), QMessageBox.StandardButton.Ok)
-                                    mb.exec()
-                                except:
-                                    logger.logger.error("Nicht-IO-Fehler beim Speichern der Doku von PatId " + self.patId)
-                                    raise
-                            else:
-                                logger.logger.warning("Dokuverzeichnis existiert nicht")
-                                mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Speichern der Dokumentation nicht möglich\nBitte überprüfen Sie die Angabe des Dokumentations-Speicherverzeichnisses.", QMessageBox.StandardButton.Ok)
-                                mb.exec()
+                # PDF erzeugen
+                if self.checkBoxPdfErstellen.isChecked():
+                    logger.logger.info("PDF-Erstellung aktiviert")
+                    pdf = inrPdf.geriasspdf ("P", "mm", "A4")
+                    logger.logger.info("FPDF-Instanz erzeugt")
+                    pdf.add_page()
+                    pdf.set_font("helvetica", "", 14)
+                    pdf.cell(0, 10, "für " + self.name + " (* " + self.geburtsdatum + ")", align="C", new_x="LMARGIN", new_y="NEXT")
+                    if self.einrichtungsname != "":
+                        pdf.cell(0, 10, "erstellt von: " + self.einrichtungsname, align="C", new_x="LMARGIN", new_y="NEXT")
+                    pdf.cell(0, 10, new_x="LMARGIN", new_y="NEXT")
+                    pdf.set_font("helvetica", "", 16)
+                    untdat = "{:>02}".format(str(self.dateEditUntersuchungsdatum.date().day())) + "." + "{:>02}".format(str(self.dateEditUntersuchungsdatum.date().month())) + "." + str(self.dateEditUntersuchungsdatum.date().year())
+                    pdf.cell(0, 14, "Gültig ab " + untdat + " (INR: " + "{:.1f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",") +  ")", align="C", new_x="LMARGIN", new_y="NEXT")
+                    pdf.set_x(35)
+                    pdf.set_font("helvetica", "B", 16)
+                    for wt in range(7):
+                        if wt < 6:
+                            pdf.cell(20, 16, self.wochentage[wt], border=1, align="C")
                         else:
-                            logger.logger.info("Nicht archiviert, da Archivierungspfad nicht festgelegt")
+                            pdf.cell(20, 16, self.wochentage[wt], border=1, align="C", new_x="LMARGIN", new_y="NEXT")
+                    pdf.set_x(35)
+                    pdf.set_font("helvetica", "", 16)
+                    for wt in range(7):
+                        if wt < 6:
+                            pdf.cell(20, 14, wochendosen[wt].replace(",25", "\u00bc").replace(",50", "\u00bd").replace(",75", "\u00be").replace(",", "").replace("0", ""), border=1, align="C")
+                        else:
+                            pdf.cell(20, 14, wochendosen[wt].replace(",25", "\u00bc").replace(",50", "\u00bd").replace(",75", "\u00be").replace(",", "").replace("0", ""), border=1, align="C", new_x="LMARGIN", new_y="NEXT")
+                    pdf.set_y(-30)
+                    pdf.set_font("helvetica", "I", 10)
+                    pdf.cell(0, 10, "Generiert von InrGDT V" + self.version + " (\u00a9 GDT-Tools " + str(datetime.date.today().year) + ")", align="R")
+                    logger.logger.info("PDF-Seite aufgebaut")
+                    try:
+                        pdf.output(os.path.join(basedir, "pdf/inr_temp.pdf"))
+                        logger.logger.info("PDF-Output nach " + os.path.join(basedir, "pdf/inr_temp.pdf") + " erfolgreich")
                     except:
-                        logger.logger.error("Fehler beim Speichern von Allgemein/immerextern in config.ini")
-                    sys.exit()
+                        logger.logger.error("Fehler bei PDF-Output nach " + os.path.join(basedir, "pdf/inr_temp.pdf"))
+
+                # GDT-Datei exportieren
+                if not gd.speichern(os.path.join(self.gdtExportVerzeichnis, self.kuerzelpraxisedv + self.kuerzelinrgdt + ".gdt"), self.zeichensatz):
+                    logger.logger.error("Fehler bei GDT-Dateiexport nach " + self.gdtExportVerzeichnis + "/" + self.kuerzelpraxisedv + self.kuerzelinrgdt + ".gdt")
+                    mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "GDT-Export nicht möglich.\nBitte überprüfen Sie die Angabe des Exportverzeichnisses.", QMessageBox.StandardButton.Ok)
+                    mb.exec()
+                self.configIni["Allgemein"]["immerextern"] = str(self.checkBoxImmer.isChecked())
+                self.configIni["Benutzer"]["letzter"] = str(self.aktuelleBenuztzernummer)
+                try:
+                    with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
+                        self.configIni.write(configfile)
+                        logger.logger.info("Allgemein/immerextern in config.ini auf " + str(self.checkBoxImmer.isChecked()) + " gesetzt")
+                    # Archivieren
+                    zusammenfassung = untersuchungsdatum + "::" + "::".join(wochendosen)
+                    if self.archivierungspfad != "":
+                        if os.path.exists(self.archivierungspfad):
+                            speicherdatum = str(self.dateEditUntersuchungsdatum.date().year()) + "{:>02}".format(str(self.dateEditUntersuchungsdatum.date().month())) + "{:>02}".format(str(self.dateEditUntersuchungsdatum.date().day()))
+                            try:
+                                if not os.path.exists(self.archivierungspfad + "/" + self.patId):
+                                    os.mkdir(self.archivierungspfad + "/" + self.patId, 0o777)
+                                    logger.logger.info("Archivierungsverzeichnis für PatId " + self.patId + " erstellt")
+                                with open(self.archivierungspfad + "/" + self.patId + "/" + speicherdatum + "_" + self.patId + ".ina", "w") as zf:
+                                    zf.write(zusammenfassung)
+                                    logger.logger.info("Doku für PatId " + self.patId + " archiviert")
+                            except IOError as e:
+                                logger.logger.error("IO-Fehler beim Speichern der Doku von PatId " + self.patId + ": " + str(e))
+                                mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Fehler beim Speichern der Dokumentation\n" + str(e), QMessageBox.StandardButton.Ok)
+                                mb.exec()
+                            except:
+                                logger.logger.error("Nicht-IO-Fehler beim Speichern der Doku von PatId " + self.patId)
+                                raise
+                        else:
+                            logger.logger.warning("Dokuverzeichnis existiert nicht")
+                            mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Speichern der Dokumentation nicht möglich\nBitte überprüfen Sie die Angabe des Dokumentations-Speicherverzeichnisses.", QMessageBox.StandardButton.Ok)
+                            mb.exec()
+                    else:
+                        logger.logger.info("Nicht archiviert, da Archivierungspfad nicht festgelegt")
+                except:
+                    logger.logger.error("Fehler beim Speichern von Allgemein/immerextern in config.ini")
+                sys.exit()
         elif self.patId != "":
             mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von InrGDT", "INR-Eingabe unzulässig", QMessageBox.StandardButton.Ok)
             mb.exec()
