@@ -133,6 +133,10 @@ class MainWindow(QMainWindow):
         self.einrichtungsname = ""
         if self.configIni.has_option("Allgemein", "einrichtungsname"):
             self.einrichtungsname = self.configIni["Allgemein"]["einrichtungsname"]
+        # 1.2.1
+        self.immerpdf = False
+        if self.configIni.has_option("Allgemein", "immerpdf"):
+            self.immerpdf = self.configIni["Allgemein"]["immerpdf"] == "True"
         ## /Nachträglich hinzufefügte Options
 
         z = self.configIni["GDT"]["zeichensatz"]
@@ -182,6 +186,9 @@ class MainWindow(QMainWindow):
                 # 1.1.6 -> 1.2.0 ["Allgemein"]["einrichtungsname"] hinzufügen
                 if not self.configIni.has_option("Allgemein", "einrichtungsname"):
                     self.configIni["Allgemein"]["einrichtungsname"] = ""
+                # 1.2.0 -> 1.2.1 ["Allgemein"]["immerpdf"] hinzufügen
+                if not self.configIni.has_option("Allgemein", "immerpdf"):
+                    self.configIni["Allgemein"]["immerpdf"] = "False"
                 ## /config.ini aktualisieren
 
                 with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
@@ -271,10 +278,6 @@ class MainWindow(QMainWindow):
             self.checkBoxExtern = QCheckBox("Extern bestimmter Wert")
             self.checkBoxExtern.setFont(self.fontGross)
             self.checkBoxExtern.setChecked(self.immerextern)
-            self.checkBoxImmer= QCheckBox("Immer extern bestimmt")
-            self.checkBoxImmer.setFont(self.fontGross)
-            self.checkBoxImmer.setChecked(self.immerextern)
-            self.checkBoxImmer.clicked.connect(self.checkBoxImmerClicked)
             kopfLayoutG.addWidget(labelName, 0, 0)
             kopfLayoutG.addWidget(labelPatId, 0, 1)
             kopfLayoutG.addWidget(labelGeburtsdatum, 0, 2)
@@ -284,7 +287,6 @@ class MainWindow(QMainWindow):
             inrLayoutH.addWidget(labelInr)
             inrLayoutH.addWidget(self.lineEditInr)
             inrLayoutH.addWidget(self.checkBoxExtern)
-            inrLayoutH.addWidget(self.checkBoxImmer)
             
             inrLayoutG = QGridLayout()
             labelWochentage = []
@@ -345,6 +347,7 @@ class MainWindow(QMainWindow):
             untdatBenutzerLayoutG.addWidget(labelBenutzer, 0, 1, 1, 2)
             untdatBenutzerLayoutG.addWidget(self.comboBoxBenutzer, 1, 1)
             self.checkBoxPdfErstellen = QCheckBox("PDF-Plan erstellen")
+            self.checkBoxPdfErstellen.setChecked(self.immerpdf)
             untdatBenutzerLayoutG.addWidget(self.checkBoxPdfErstellen, 1, 2)
 
             # Senden-Button
@@ -636,10 +639,6 @@ class MainWindow(QMainWindow):
             self.lineEditInr.setStyleSheet("background:rgb(255,255,255)")
             self.pushButtonSenden.setEnabled(True)
 
-    def checkBoxImmerClicked(self):
-        if self.checkBoxImmer.isChecked():
-            self.checkBoxExtern.setChecked(True)
-
     def pushButtonDosisClicked(self, dosiszeile, wochentagspalte):
         if self.labelArchivdatum.text() != "--.--.----":
             self.labelArchivdatum.setFont(self.fontGrossStrikeOut)
@@ -762,12 +761,14 @@ class MainWindow(QMainWindow):
                     logger.logger.error("Fehler bei GDT-Dateiexport nach " + self.gdtExportVerzeichnis + "/" + self.kuerzelpraxisedv + self.kuerzelinrgdt + ".gdt")
                     mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "GDT-Export nicht möglich.\nBitte überprüfen Sie die Angabe des Exportverzeichnisses.", QMessageBox.StandardButton.Ok)
                     mb.exec()
-                self.configIni["Allgemein"]["immerextern"] = str(self.checkBoxImmer.isChecked())
+                self.configIni["Allgemein"]["immerextern"] = str(self.checkBoxExtern.isChecked())
+                self.configIni["Allgemein"]["immerpdf"] = str(self.checkBoxPdfErstellen.isChecked())
                 self.configIni["Benutzer"]["letzter"] = str(self.aktuelleBenuztzernummer)
                 try:
                     with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
                         self.configIni.write(configfile)
-                        logger.logger.info("Allgemein/immerextern in config.ini auf " + str(self.checkBoxImmer.isChecked()) + " gesetzt")
+                        logger.logger.info("Allgemein/immerextern in config.ini auf " + str(self.checkBoxExtern.isChecked()) + " gesetzt")
+                        logger.logger.info("Allgemein/immerpdf in config.ini auf " + str(self.checkBoxPdfErstellen.isChecked()) + " gesetzt")
                     # Archivieren
                     zusammenfassung = untersuchungsdatum + "::" + "::".join(wochendosen)
                     if self.archivierungspfad != "":
