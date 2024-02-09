@@ -1,6 +1,6 @@
 import sys, configparser, os, datetime, shutil, logger, re
 import gdt, gdtzeile, gdttoolsL
-import dialogUeberInrGdt, dialogEinstellungenAllgemein, dialogEinstellungenGdt, dialogEinstellungenBenutzer, dialogEinstellungenLanrLizenzschluessel, dialogEinstellungenImportExport, dialogEinstellungenDosierung, inrPdf
+import dialogUeberInrGdt, dialogEinstellungenAllgemein, dialogEinstellungenGdt, dialogEinstellungenBenutzer, dialogEinstellungenLanrLizenzschluessel, dialogEinstellungenImportExport, dialogEinstellungenDosierung, inrPdf, dialogEula
 from PySide6.QtCore import Qt, QDate, QTime, QTranslator, QLibraryInfo
 from PySide6.QtGui import QFont, QAction, QIcon, QDesktopServices
 from PySide6.QtWidgets import (
@@ -137,6 +137,10 @@ class MainWindow(QMainWindow):
         self.immerpdf = False
         if self.configIni.has_option("Allgemein", "immerpdf"):
             self.immerpdf = self.configIni["Allgemein"]["immerpdf"] == "True"
+        # 1.2.2
+        self.eulagelesen = False
+        if self.configIni.has_option("Allgemein", "eulagelesen"):
+            self.eulagelesen = self.configIni["Allgemein"]["eulagelesen"] == "True"
         ## /Nachträglich hinzufefügte Options
 
         z = self.configIni["GDT"]["zeichensatz"]
@@ -156,6 +160,21 @@ class MainWindow(QMainWindow):
                     self.configIni.write(configfile)
         else:
             self.lizenzschluessel = gdttoolsL.GdtToolsLizenzschluessel.dekrypt(self.lizenzschluessel)
+
+        # Prüfen, ob EULA gelesen
+        if not self.eulagelesen:
+            de = dialogEula.Eula()
+            de.exec()
+            if de.checkBoxZustimmung.isChecked():
+                self.eulagelesen = True
+                self.configIni["Allgemein"]["eulagelesen"] = "True"
+                with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
+                    self.configIni.write(configfile)
+                logger.logger.info("EULA zugestimmt")
+            else:
+                mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von SignoGDT", "Ohne einmalige Zustimmung der Lizenzvereinbarung kann SignoGDT nicht gestartet werden.", QMessageBox.StandardButton.Ok)
+                mb.exec()
+                sys.exit()
 
         # Grundeinstellungen bei erstem Start
         if ersterStart:
@@ -195,13 +214,24 @@ class MainWindow(QMainWindow):
                     self.configIni.write(configfile)
                 self.version = self.configIni["Allgemein"]["version"]
                 logger.logger.info("Version auf " + self.version + " aktualisiert")
-                mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von InrGDT", "InrGDT wurde erfolgreich auf Version " + self.version + " aktualisiert.", QMessageBox.StandardButton.Ok)
-                mb.setTextFormat(Qt.TextFormat.RichText)
-                mb.exec()
+                # Prüfen, ob EULA gelesen
+                de = dialogEula.Eula(self.version)
+                de.exec()
+                if de.checkBoxZustimmung.isChecked():
+                    self.eulagelesen = True
+                    self.configIni["Allgemein"]["eulagelesen"] = "True"
+                    with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
+                        self.configIni.write(configfile)
+                    logger.logger.info("EULA zugestimmt")
+                else:
+                    mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von SignoGDT", "Ohne  Zustimmung zur Lizenzvereinbarung kann SignoGDT nicht gestartet werden.", QMessageBox.StandardButton.Ok)
+                    mb.exec()
+                    sys.exit()
         except:
-            logger.logger.error("Problem beim Aktualisieren auf Version " + configIniBase["Allgemein"]["version"])
-            mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Problem beim Aktualisieren auf Version " + configIniBase["Allgemein"]["version"], QMessageBox.StandardButton.Ok)
-            mb.exec()
+            if self.eulagelesen: # Da sys.exit() ohne EULA-Zustimmung eine Exception auslöst
+                logger.logger.error("Problem beim Aktualisieren auf Version " + configIniBase["Allgemein"]["version"])
+                mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Problem beim Aktualisieren auf Version " + configIniBase["Allgemein"]["version"], QMessageBox.StandardButton.Ok)
+                mb.exec()
 
         # Add-Ons freigeschaltet?
         self.addOnsFreigeschaltet = gdttoolsL.GdtToolsLizenzschluessel.lizenzErteilt(self.lizenzschluessel, self.lanr, gdttoolsL.SoftwareId.INRGDT)
@@ -322,14 +352,18 @@ class MainWindow(QMainWindow):
             
             # Bemerkungsfeld
             labelBemerkungen = QLabel("Bemerkungen")
+            labelBemerkungen.setFont(self.fontGross)
             self.textEditBemerkungen = QTextEdit()
-            self.textEditBemerkungen.setFixedHeight(40)
+            self.textEditBemerkungen.setFixedHeight(50)
+            self.textEditBemerkungen.setFont(self.fontGross)
 
             # Untersuchungsdatum und Benutzer
             untdatBenutzerLayoutG = QGridLayout()
             labelUntersuchungsdatum = QLabel("Untersuchungsdatum:")
+            labelUntersuchungsdatum.setFont(self.fontGross)
             self.untersuchungsdatum = QDate().currentDate()
             self.dateEditUntersuchungsdatum = QDateEdit()
+            self.dateEditUntersuchungsdatum.setFont(self.fontGross)
             self.dateEditUntersuchungsdatum.setDate(self.untersuchungsdatum)
             self.dateEditUntersuchungsdatum.setDisplayFormat("dd.MM.yyyy")
             self.dateEditUntersuchungsdatum.setCalendarPopup(True)
@@ -337,7 +371,9 @@ class MainWindow(QMainWindow):
             untdatBenutzerLayoutG.addWidget(labelUntersuchungsdatum, 0, 0)
             untdatBenutzerLayoutG.addWidget(self.dateEditUntersuchungsdatum, 1, 0)
             labelBenutzer = QLabel("Dokumentiert von:")
+            labelBenutzer.setFont(self.fontGross)
             self.comboBoxBenutzer = QComboBox()
+            self.comboBoxBenutzer.setFont(self.fontGross)
             self.comboBoxBenutzer.addItems(self.benutzernamenListe)
             self.comboBoxBenutzer.currentIndexChanged.connect(self.comboBoxBenutzerIndexChanged)
             aktBenNum = 0
@@ -347,6 +383,7 @@ class MainWindow(QMainWindow):
             untdatBenutzerLayoutG.addWidget(labelBenutzer, 0, 1, 1, 2)
             untdatBenutzerLayoutG.addWidget(self.comboBoxBenutzer, 1, 1)
             self.checkBoxPdfErstellen = QCheckBox("PDF-Plan erstellen")
+            self.checkBoxPdfErstellen.setFont(self.fontGross)
             self.checkBoxPdfErstellen.setChecked(self.immerpdf)
             untdatBenutzerLayoutG.addWidget(self.checkBoxPdfErstellen, 1, 2)
 
@@ -391,20 +428,22 @@ class MainWindow(QMainWindow):
             einstellungenDosierungAction.triggered.connect(lambda checked=False, neustartfrage=True: self.einstellungenDosierung(checked, True)) 
 
             einstellungenErweiterungenAction = QAction("LANR/Lizenzschlüssel", self)
-            einstellungenErweiterungenAction.triggered.connect(lambda checked=False, neustartfrage=True: self.einstellungenLanrLizenzschluessel(checked, True)) # type: ignore
+            einstellungenErweiterungenAction.triggered.connect(lambda checked=False, neustartfrage=True: self.einstellungenLanrLizenzschluessel(checked, True)) 
             einstellungenImportExportAction = QAction("Im- /Exportieren", self)
-            einstellungenImportExportAction.triggered.connect(self.einstellungenImportExport) # type: ignore
+            einstellungenImportExportAction.triggered.connect(self.einstellungenImportExport) 
             einstellungenImportExportAction.setMenuRole(QAction.MenuRole.NoRole)
             hilfeMenu = menubar.addMenu("Hilfe")
             hilfeWikiAction = QAction("InrGDT Wiki", self)
-            hilfeWikiAction.triggered.connect(self.inrgdtWiki) # type: ignore
+            hilfeWikiAction.triggered.connect(self.inrgdtWiki)
             hilfeUpdateAction = QAction("Auf Update prüfen", self)
-            hilfeUpdateAction.triggered.connect(self.updatePruefung) # type: ignore
+            hilfeUpdateAction.triggered.connect(self.updatePruefung)
             hilfeUeberAction = QAction("Über InrGDT", self)
             hilfeUeberAction.setMenuRole(QAction.MenuRole.NoRole)
-            hilfeUeberAction.triggered.connect(self.ueberInrGdt) # type: ignore
+            hilfeUeberAction.triggered.connect(self.ueberInrGdt)
+            hilfeEulaAction = QAction("Lizenzvereinbarung (EULA)", self)
+            hilfeEulaAction.triggered.connect(self.eula) 
             hilfeLogExportieren = QAction("Log-Verzeichnis exportieren", self)
-            hilfeLogExportieren.triggered.connect(self.logExportieren) # type: ignore
+            hilfeLogExportieren.triggered.connect(self.logExportieren) 
             
             anwendungMenu.addAction(aboutAction)
             anwendungMenu.addAction(updateAction)
@@ -419,6 +458,7 @@ class MainWindow(QMainWindow):
             hilfeMenu.addAction(hilfeUpdateAction)
             hilfeMenu.addSeparator()
             hilfeMenu.addAction(hilfeUeberAction)
+            hilfeMenu.addAction(hilfeEulaAction)
             hilfeMenu.addSeparator()
             hilfeMenu.addAction(hilfeLogExportieren)
             
@@ -510,6 +550,9 @@ class MainWindow(QMainWindow):
     def ueberInrGdt(self):
         de = dialogUeberInrGdt.UeberInrGdt()
         de.exec()
+
+    def eula(self):
+        QDesktopServices.openUrl("https://gdttools.de/Lizenzvereinbarung_InrGDT.pdf")
 
     def logExportieren(self):
         if (os.path.exists(os.path.join(basedir, "log"))):
@@ -629,7 +672,7 @@ class MainWindow(QMainWindow):
             pass
     
     def inrgdtWiki(self, link):
-        QDesktopServices.openUrl("https://www.github.com/retconx/inrgdt/wiki")
+        QDesktopServices.openUrl("https://github.com/retconx/inrgdt/wiki")
 
     def lineEditInrEdited(self):
         if re.match(reInr, self.lineEditInr.text()) == None:
