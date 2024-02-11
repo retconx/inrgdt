@@ -180,7 +180,7 @@ class MainWindow(QMainWindow):
                     self.configIni.write(configfile)
                 logger.logger.info("EULA zugestimmt")
             else:
-                mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von InrGDT", "Ohne einmalige Zustimmung der Lizenzvereinbarung kann InrGDT nicht gestartet werden.", QMessageBox.StandardButton.Ok)
+                mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von InrGDT", "Ohne Zustimmung der Lizenzvereinbarung kann InrGDT nicht gestartet werden.", QMessageBox.StandardButton.Ok)
                 mb.exec()
                 sys.exit()
 
@@ -231,20 +231,22 @@ class MainWindow(QMainWindow):
                 de = dialogEula.Eula(self.version)
                 de.exec()
                 self.eulagelesen = de.checkBoxZustimmung.isChecked()
+                self.configIni["Allgemein"]["eulagelesen"] = str(self.eulagelesen)
+                with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
+                    self.configIni.write(configfile)
                 if self.eulagelesen:
-                    self.configIni["Allgemein"]["eulagelesen"] = "True"
-                    with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
-                        self.configIni.write(configfile)
                     logger.logger.info("EULA zugestimmt")
                 else:
+                    logger.logger.info("EULA nicht zugestimmt")
                     mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von InrGDT", "Ohne  Zustimmung zur Lizenzvereinbarung kann InrGDT nicht gestartet werden.", QMessageBox.StandardButton.Ok)
                     mb.exec()
                     sys.exit()
+        except SystemExit:
+            sys.exit()
         except:
-            if self.eulagelesen: # Da sys.exit() ohne EULA-Zustimmung eine Exception auslöst
-                logger.logger.error("Problem beim Aktualisieren auf Version " + configIniBase["Allgemein"]["version"])
-                mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Problem beim Aktualisieren auf Version " + configIniBase["Allgemein"]["version"], QMessageBox.StandardButton.Ok)
-                mb.exec()
+            logger.logger.error("Problem beim Aktualisieren auf Version " + configIniBase["Allgemein"]["version"])
+            mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Problem beim Aktualisieren auf Version " + configIniBase["Allgemein"]["version"], QMessageBox.StandardButton.Ok)
+            mb.exec()
 
         # Add-Ons freigeschaltet?
         self.addOnsFreigeschaltet = gdttoolsL.GdtToolsLizenzschluessel.lizenzErteilt(self.lizenzschluessel, self.lanr, gdttoolsL.SoftwareId.INRGDT)
@@ -486,7 +488,6 @@ class MainWindow(QMainWindow):
             # Gegebenenfalls vorherige Doku laden
             if self.vorherigedokuladen:
                 self.mitVorherigerUntersuchungAusfuellen()
-            
         else:
             sys.exit()
 
