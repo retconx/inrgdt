@@ -141,6 +141,14 @@ class MainWindow(QMainWindow):
         self.eulagelesen = False
         if self.configIni.has_option("Allgemein", "eulagelesen"):
             self.eulagelesen = self.configIni["Allgemein"]["eulagelesen"] == "True"
+        # 1.3.0
+        self.wochentageAnzeigen = False
+        self.lzVor = "0"
+        self.lzNach = "0"
+        if self.configIni.has_option("Allgemein", "wochentageanzeigen"):
+            self.wochentageAnzeigen = self.configIni["Allgemein"]["wochentageanzeigen"] == "True"
+            self.lzVor = self.configIni["Allgemein"]["lzvor"]
+            self.lzNach = self.configIni["Allgemein"]["lznach"]
         ## /Nachträglich hinzufefügte Options
 
         z = self.configIni["GDT"]["zeichensatz"]
@@ -208,6 +216,11 @@ class MainWindow(QMainWindow):
                 # 1.2.0 -> 1.2.1 ["Allgemein"]["immerpdf"] hinzufügen
                 if not self.configIni.has_option("Allgemein", "immerpdf"):
                     self.configIni["Allgemein"]["immerpdf"] = "False"
+                # 1.2.2 -> 1.3.0 ["Allgemein"]["wochentageanzeigen"], ["Allgemein"]["lzvor"] und ["Allgemein"]["lznach"] hinzufügen
+                if not self.configIni.has_option("Allgemein", "wochentageanzeigen"):
+                    self.configIni["Allgemein"]["wochentageanzeigen"] = "False"
+                    self.configIni["Allgemein"]["lzvor"] = self.lzVor
+                    self.configIni["Allgemein"]["lznach"] = self.lzNach
                 ## /config.ini aktualisieren
 
                 with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
@@ -577,6 +590,9 @@ class MainWindow(QMainWindow):
     def einstellungenAllgmein(self, checked, neustartfrage=False):
         de = dialogEinstellungenAllgemein.EinstellungenAllgemein(self.configPath)
         if de.exec() == 1:
+            self.configIni["Allgemein"]["wochentageanzeigen"] = str(de.checkBoxWochentagsuebertragungAktivieren.isChecked())
+            self.configIni["Allgemein"]["lzvor"] = de.lineEditLeerzeichenVor.text()
+            self.configIni["Allgemein"]["lznach"] = de.lineEditLeerzeichenNach.text()
             self.configIni["Allgemein"]["einrichtungsname"] = de.lineEditEinrichtungsname.text()
             self.configIni["Allgemein"]["archivierungspfad"] = de.lineEditArchivierungsverzeichnis.text()
             self.configIni["Allgemein"]["vorherigedokuladen"] = str(de.checkBoxVorherigeDokuLaden.isChecked())
@@ -728,6 +744,19 @@ class MainWindow(QMainWindow):
                 gd.addZeile("6304", "Marcumar-Dosierungsplan")
                 gd.addZeile("6305", os.path.join(basedir, "pdf/inr_temp.pdf"))
 
+            # Wochentagsübertragung
+            if self.wochentageAnzeigen:
+                lzVor = ""
+                for i in range(int(self.lzVor)):
+                    lzVor += " "
+                lzNach = ""
+                for i in range(int(self.lzNach)):
+                    lzNach += " "
+                wochentagszeile = "INR"
+                for wt in self.wochentage:
+                    wochentagszeile += lzVor + wt + lzNach
+                gd.addZeile("6220", wochentagszeile)
+            
             # Befund
             befundzeile = "{:.1f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",")
             befundzeile += "     "

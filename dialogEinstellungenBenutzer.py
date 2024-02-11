@@ -60,7 +60,7 @@ class EinstellungenBenutzer(QDialog):
                 fehlendesKuerzel = i
                 break
         if fehlendesKuerzel != -1:
-            mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis", "Für den " + str(fehlendesKuerzel + 1) + ". Benutzer wurde kein Kürzel angegeben.", QMessageBox.StandardButton.Ok)
+            mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von InrGDT", "Für den " + str(fehlendesKuerzel + 1) + ". Benutzer wurde kein Kürzel angegeben.", QMessageBox.StandardButton.Ok)
             mb.exec()
             self.lineEditKuerzel[fehlendesKuerzel].setFocus()
         else:

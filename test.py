@@ -1,3 +1,4 @@
-inr = "0,3"
-inrFloat = float(inr.replace(",", "."))
-print("{:.2f}".format(inrFloat))
+import re
+patternZahl = r"^\d+$"
+if re.match(patternZahl, "3") == None:
+    print("nein")

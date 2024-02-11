@@ -1,4 +1,4 @@
-import configparser, os
+import configparser, os, re
 from PySide6.QtWidgets import (
     QDialogButtonBox,
     QDialog,
@@ -9,7 +9,8 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QPushButton,
     QFileDialog,
-    QCheckBox
+    QCheckBox,
+    QMessageBox
 )
 
 zeichensatz = ["7Bit", "IBM (Standard) CP 437", "ISO8859-1 (ANSI) CP 1252"]
@@ -17,7 +18,6 @@ zeichensatz = ["7Bit", "IBM (Standard) CP 437", "ISO8859-1 (ANSI) CP 1252"]
 class EinstellungenAllgemein(QDialog):
     def __init__(self, configPath):
         super().__init__()
-        self.setFixedWidth(500)
 
         #config.ini lesen
         configIni = configparser.ConfigParser()
@@ -25,6 +25,9 @@ class EinstellungenAllgemein(QDialog):
         self.einrichtungsname = configIni["Allgemein"]["einrichtungsname"]
         self.archivierungspfad = configIni["Allgemein"]["archivierungspfad"]
         self.vorherigeDokuLaden = configIni["Allgemein"]["vorherigedokuladen"]
+        self.wochentageAnzeigen = configIni["Allgemein"]["wochentageanzeigen"] == "True"
+        self.leerzeichenVor = configIni["Allgemein"]["lzvor"]
+        self.leerzeichenNach = configIni["Allgemein"]["lznach"]
 
         self.setWindowTitle("Allgemeine Einstellungen")
         self.buttonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
@@ -33,6 +36,37 @@ class EinstellungenAllgemein(QDialog):
         self.buttonBox.rejected.connect(self.reject) # type:ignore
 
         dialogLayoutV = QVBoxLayout()
+        # Groupbox Wochentagsübertragung
+        groupboxLayoutWochentagsUebertragungG = QGridLayout()
+        groupBoxWochentagsUebertragung = QGroupBox("Wochentagsübertragung")
+        groupBoxWochentagsUebertragung.setStyleSheet("font-weight:bold")
+        self.checkBoxWochentagsuebertragungAktivieren = QCheckBox("Aktivieren")
+        self.checkBoxWochentagsuebertragungAktivieren.setStyleSheet("font-weight:normal")
+        self.checkBoxWochentagsuebertragungAktivieren.setChecked(self.wochentageAnzeigen)
+        self.checkBoxWochentagsuebertragungAktivieren.stateChanged.connect(self.checkBoxWochentagsuebertragungAktivierenChanged)
+        labelLeerzeichen = QLabel("Zeilenkonfiguration:")
+        labelLeerzeichen.setStyleSheet("font-weight:normal")
+        labelLeerzeichenVor = QLabel("Anzahl Leerzeichen Vor:")
+        labelLeerzeichenVor.setStyleSheet("font-weight:normal")
+        self.lineEditLeerzeichenVor = QLineEdit(self.leerzeichenVor)
+        self.lineEditLeerzeichenVor.setStyleSheet("font-weight:normal")
+        self.lineEditLeerzeichenVor.setEnabled(self.wochentageAnzeigen)
+        labelLeerzeichenNach = QLabel("Anzahl Leerzeichen Nach:")
+        labelLeerzeichenNach.setStyleSheet("font-weight:normal")
+        self.lineEditLeerzeichenNach = QLineEdit(self.leerzeichenNach)
+        self.lineEditLeerzeichenNach.setStyleSheet("font-weight:normal")
+        self.lineEditLeerzeichenNach.setEnabled(self.wochentageAnzeigen)
+        labelWochentagLegende = QLabel("INR[Leerzeichen Vor]Mo[Leerzeichen Nach][Leerzeichen Vor]Di[Leerzeichen Nach]...[Leerzeichen Vor]So[Leerzeichen Nach]")
+        labelWochentagLegende.setStyleSheet("font-weight:normal;font-style:italic")
+        groupboxLayoutWochentagsUebertragungG.addWidget(self.checkBoxWochentagsuebertragungAktivieren, 0, 0, 1, 4)
+        groupboxLayoutWochentagsUebertragungG.addWidget(labelLeerzeichen, 1, 0, 1, 4)
+        groupboxLayoutWochentagsUebertragungG.addWidget(labelLeerzeichenVor, 2, 0, 1, 1)
+        groupboxLayoutWochentagsUebertragungG.addWidget(self.lineEditLeerzeichenVor, 2, 1, 1, 1)
+        groupboxLayoutWochentagsUebertragungG.addWidget(labelLeerzeichenNach, 2, 2, 1, 1)
+        groupboxLayoutWochentagsUebertragungG.addWidget(self.lineEditLeerzeichenNach, 2, 3, 1, 1)
+        groupboxLayoutWochentagsUebertragungG.addWidget(labelWochentagLegende, 3, 0, 1, 4)
+        groupBoxWochentagsUebertragung.setLayout(groupboxLayoutWochentagsUebertragungG)
+
         # Groupbox Einrichtung
         groupboxLayoutEinrichtungG = QGridLayout()
         groupboxEinrichtung = QGroupBox("Einrichtung/Praxis")
@@ -64,10 +98,15 @@ class EinstellungenAllgemein(QDialog):
         groupboxLayoutArchivierungG.addWidget(buttonDurchsuchenArchivierungsverzeichnis, 1, 1)
         groupboxLayoutArchivierungG.addWidget(self.checkBoxVorherigeDokuLaden, 2, 0, 1, 2)
         groupboxArchivierung.setLayout(groupboxLayoutArchivierungG)
+        dialogLayoutV.addWidget(groupBoxWochentagsUebertragung)
         dialogLayoutV.addWidget(groupboxEinrichtung)
         dialogLayoutV.addWidget(groupboxArchivierung)
         dialogLayoutV.addWidget(self.buttonBox)
         self.setLayout(dialogLayoutV)
+
+    def checkBoxWochentagsuebertragungAktivierenChanged(self):
+        self.lineEditLeerzeichenVor.setEnabled(self.checkBoxWochentagsuebertragungAktivieren.isChecked())
+        self.lineEditLeerzeichenNach.setEnabled(self.checkBoxWochentagsuebertragungAktivieren.isChecked())
 
     def durchsuchenArchivierungsverzeichnis(self):
         fd = QFileDialog(self)
@@ -80,3 +119,18 @@ class EinstellungenAllgemein(QDialog):
         if fd.exec() == 1:
             self.archivierungspfad = fd.directory()
             self.lineEditArchivierungsverzeichnis.setText(fd.directory().path())
+    
+    def accept(self):
+        patternZahl = r"^\d+$"
+        if re.match(patternZahl, self.lineEditLeerzeichenVor.text()) == None:
+            mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von InrGDT", "Leerzeichenanzahl Vor ungültig", QMessageBox.StandardButton.Ok)
+            mb.exec()
+            self.lineEditLeerzeichenVor.setFocus()
+            self.lineEditLeerzeichenVor.selectAll()
+        elif re.match(patternZahl, self.lineEditLeerzeichenNach.text()) == None:
+            mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von InrGDT", "Leerzeichenanzahl Nach ungültig", QMessageBox.StandardButton.Ok)
+            mb.exec()
+            self.lineEditLeerzeichenNach.setFocus()
+            self.lineEditLeerzeichenNach.selectAll()
+        else:
+            self.done(1)
