@@ -180,7 +180,7 @@ class MainWindow(QMainWindow):
                     self.configIni.write(configfile)
                 logger.logger.info("EULA zugestimmt")
             else:
-                mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von SignoGDT", "Ohne einmalige Zustimmung der Lizenzvereinbarung kann SignoGDT nicht gestartet werden.", QMessageBox.StandardButton.Ok)
+                mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von InrGDT", "Ohne einmalige Zustimmung der Lizenzvereinbarung kann InrGDT nicht gestartet werden.", QMessageBox.StandardButton.Ok)
                 mb.exec()
                 sys.exit()
 
@@ -230,14 +230,14 @@ class MainWindow(QMainWindow):
                 # Prüfen, ob EULA gelesen
                 de = dialogEula.Eula(self.version)
                 de.exec()
-                if de.checkBoxZustimmung.isChecked():
-                    self.eulagelesen = True
+                self.eulagelesen = de.checkBoxZustimmung.isChecked()
+                if self.eulagelesen:
                     self.configIni["Allgemein"]["eulagelesen"] = "True"
                     with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
                         self.configIni.write(configfile)
                     logger.logger.info("EULA zugestimmt")
                 else:
-                    mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von SignoGDT", "Ohne  Zustimmung zur Lizenzvereinbarung kann SignoGDT nicht gestartet werden.", QMessageBox.StandardButton.Ok)
+                    mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von InrGDT", "Ohne  Zustimmung zur Lizenzvereinbarung kann InrGDT nicht gestartet werden.", QMessageBox.StandardButton.Ok)
                     mb.exec()
                     sys.exit()
         except:
