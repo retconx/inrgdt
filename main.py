@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QLabel, 
     QDateEdit,
     QComboBox,
-    QMessageBox, 
+    QMessageBox,
     QCheckBox,
     QLineEdit,
     QTextEdit
@@ -248,8 +248,20 @@ class MainWindow(QMainWindow):
             mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Problem beim Aktualisieren auf Version " + configIniBase["Allgemein"]["version"], QMessageBox.StandardButton.Ok)
             mb.exec()
 
+        # Pseudo-Lizenz?
+        self.pseudoLizenzId = ""
+        rePatId = r"^patid\d+$"
+        if len(sys.argv) > 1:
+            for arg in sys.argv:
+                if re.match(rePatId, arg) != None:
+                    logger.logger.info("Pseudo-Lizenz mit id " + arg[5:])
+                    self.pseudoLizenzId = arg[5:]
+
         # Add-Ons freigeschaltet?
-        self.addOnsFreigeschaltet = gdttoolsL.GdtToolsLizenzschluessel.lizenzErteilt(self.lizenzschluessel, self.lanr, gdttoolsL.SoftwareId.INRGDT)
+        self.addOnsFreigeschaltet = gdttoolsL.GdtToolsLizenzschluessel.lizenzErteilt(self.lizenzschluessel, self.lanr, gdttoolsL.SoftwareId.INRGDT) or gdttoolsL.GdtToolsLizenzschluessel.lizenzErteilt(self.lizenzschluessel, self.lanr, gdttoolsL.SoftwareId.INRGDTPSEUDO) and self.pseudoLizenzId != ""
+        if self.lizenzschluessel != "" and gdttoolsL.GdtToolsLizenzschluessel.getSoftwareId(self.lizenzschluessel) == gdttoolsL.SoftwareId.INRGDTPSEUDO and self.pseudoLizenzId == "":
+            mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Bei Verwendung einer Pseudolizenz muss InrGDT mit einer Patienten-Id als Startargument im Format \"patid<Pat.-Id>\" ausgeführt werden.", QMessageBox.StandardButton.Ok)
+            mb.exec() 
         
         jahr = datetime.datetime.now().year
         copyrightJahre = "2024"
@@ -284,6 +296,9 @@ class MainWindow(QMainWindow):
             self.patId = str(gd.getInhalt("3000"))
             self.name = str(gd.getInhalt("3102")) + " " + str(gd.getInhalt("3101"))
             logger.logger.info("PatientIn " + self.name + " (ID: " + self.patId + ") geladen")
+            if self.pseudoLizenzId != "":
+                self.patid = self.pseudoLizenzId
+                logger.logger.info("PatId wegen Pseudolizenz auf " + self.pseudoLizenzId + " gesetzt")
             self.geburtsdatum = str(gd.getInhalt("3103"))[0:2] + "." + str(gd.getInhalt("3103"))[2:4] + "." + str(gd.getInhalt("3103"))[4:8]
         except (IOError, gdtzeile.GdtFehlerException) as e:
             logger.logger.warning("Fehler beim Laden der GDT-Datei: " + str(e))
