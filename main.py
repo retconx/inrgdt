@@ -251,11 +251,10 @@ class MainWindow(QMainWindow):
         # Pseudo-Lizenz?
         self.pseudoLizenzId = ""
         rePatId = r"^patid\d+$"
-        if len(sys.argv) > 1:
-            for arg in sys.argv:
-                if re.match(rePatId, arg) != None:
-                    logger.logger.info("Pseudo-Lizenz mit id " + arg[5:])
-                    self.pseudoLizenzId = arg[5:]
+        for arg in sys.argv:
+            if re.match(rePatId, arg) != None:
+                logger.logger.info("Pseudo-Lizenz mit id " + arg[5:])
+                self.pseudoLizenzId = arg[5:]
 
         # Add-Ons freigeschaltet?
         self.addOnsFreigeschaltet = gdttoolsL.GdtToolsLizenzschluessel.lizenzErteilt(self.lizenzschluessel, self.lanr, gdttoolsL.SoftwareId.INRGDT) or gdttoolsL.GdtToolsLizenzschluessel.lizenzErteilt(self.lizenzschluessel, self.lanr, gdttoolsL.SoftwareId.INRGDTPSEUDO) and self.pseudoLizenzId != ""
