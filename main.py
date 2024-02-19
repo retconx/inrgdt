@@ -315,6 +315,8 @@ class MainWindow(QMainWindow):
             mainLayoutV = QVBoxLayout()
             kopfLayoutG = QGridLayout()
             inrLayoutH = QHBoxLayout()
+            self.labelPseudolizenz = QLabel("+++ Pseudolizenz für Test-/ Präsentationszwecke +++")
+            self.labelPseudolizenz.setStyleSheet("color:rgb(200,0,0);font-style:italic")
             labelName = QLabel("Name: " + self.name)
             labelName.setFont(self.fontGross)
             labelPatId = QLabel("ID: " + self.patId)
@@ -423,6 +425,8 @@ class MainWindow(QMainWindow):
             self.pushButtonSenden.setEnabled(self.addOnsFreigeschaltet)
             self.pushButtonSenden.clicked.connect(self.pushButtonSendenClicked)
 
+            if self.addOnsFreigeschaltet and gdttoolsL.GdtToolsLizenzschluessel.getSoftwareId(self.lizenzschluessel) == gdttoolsL.SoftwareId.INRGDTPSEUDO:
+                mainLayoutV.addWidget(self.labelPseudolizenz, alignment=Qt.AlignmentFlag.AlignCenter)
             mainLayoutV.addLayout(kopfLayoutG)
             mainLayoutV.addSpacing(10)
             mainLayoutV.addLayout(inrLayoutH)
