@@ -1,5 +1,8 @@
 import sys, configparser, os, datetime, shutil, logger, re
-import gdt, gdtzeile, gdttoolsL
+import gdt, gdtzeile
+## Nur mit Lizenz
+import gdttoolsL
+## /Nur mit Lizenz
 import dialogUeberInrGdt, dialogEinstellungenAllgemein, dialogEinstellungenGdt, dialogEinstellungenBenutzer, dialogEinstellungenLanrLizenzschluessel, dialogEinstellungenImportExport, dialogEinstellungenDosierung, inrPdf, dialogEula
 from PySide6.QtCore import Qt, QDate, QTime, QTranslator, QLibraryInfo
 from PySide6.QtGui import QFont, QAction, QIcon, QDesktopServices
@@ -160,6 +163,7 @@ class MainWindow(QMainWindow):
         self.lanr = self.configIni["Erweiterungen"]["lanr"]
         self.lizenzschluessel = self.configIni["Erweiterungen"]["lizenzschluessel"]
 
+        ## Nur mit Lizenz
         # Prüfen, ob Lizenzschlüssel unverschlüsselt
         if len(self.lizenzschluessel) == 29:
             logger.logger.info("Lizenzschlüssel unverschlüsselt")
@@ -168,6 +172,7 @@ class MainWindow(QMainWindow):
                     self.configIni.write(configfile)
         else:
             self.lizenzschluessel = gdttoolsL.GdtToolsLizenzschluessel.dekrypt(self.lizenzschluessel)
+        ## /Nur mit Lizenz
 
         # Prüfen, ob EULA gelesen
         if not self.eulagelesen:
@@ -190,7 +195,9 @@ class MainWindow(QMainWindow):
             mb = QMessageBox(QMessageBox.Icon.Question, "Hinweis von InrGDT", "Vermutlich starten Sie InrGDT das erste Mal auf diesem PC.\nMöchten Sie jetzt die Grundeinstellungen vornehmen?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
             mb.setDefaultButton(QMessageBox.StandardButton.Yes)
             if mb.exec() == QMessageBox.StandardButton.Yes:
+                ## Nur mit Lizenz
                 self.einstellungenLanrLizenzschluessel(False)
+                ## /Nur mit Lizenz
                 self.einstellungenGdt(False)
                 self.einstellungenBenutzer(False)
                 self.einstellungenDosierung(False)
@@ -248,6 +255,9 @@ class MainWindow(QMainWindow):
             mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Problem beim Aktualisieren auf Version " + configIniBase["Allgemein"]["version"], QMessageBox.StandardButton.Ok)
             mb.exec()
 
+        self.addOnsFreigeschaltet = True
+
+        ## Nur mit Lizenz
         # Pseudo-Lizenz?
         self.pseudoLizenzId = ""
         rePatId = r"^patid\d+$"
@@ -261,6 +271,7 @@ class MainWindow(QMainWindow):
         if self.lizenzschluessel != "" and gdttoolsL.GdtToolsLizenzschluessel.getSoftwareId(self.lizenzschluessel) == gdttoolsL.SoftwareId.INRGDTPSEUDO and self.pseudoLizenzId == "":
             mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Bei Verwendung einer Pseudolizenz muss InrGDT mit einer Patienten-Id als Startargument im Format \"patid<Pat.-Id>\" ausgeführt werden.", QMessageBox.StandardButton.Ok)
             mb.exec() 
+        ## /Nur mit Lizenz
         
         jahr = datetime.datetime.now().year
         copyrightJahre = "2024"
@@ -295,9 +306,11 @@ class MainWindow(QMainWindow):
             self.patId = str(gd.getInhalt("3000"))
             self.name = str(gd.getInhalt("3102")) + " " + str(gd.getInhalt("3101"))
             logger.logger.info("PatientIn " + self.name + " (ID: " + self.patId + ") geladen")
+            ## Nur mit Lizenz
             if self.pseudoLizenzId != "":
                 self.patid = self.pseudoLizenzId
                 logger.logger.info("PatId wegen Pseudolizenz auf " + self.pseudoLizenzId + " gesetzt")
+            ## /Nur mit Lizenz
             self.geburtsdatum = str(gd.getInhalt("3103"))[0:2] + "." + str(gd.getInhalt("3103"))[2:4] + "." + str(gd.getInhalt("3103"))[4:8]
         except (IOError, gdtzeile.GdtFehlerException) as e:
             logger.logger.warning("Fehler beim Laden der GDT-Datei: " + str(e))
@@ -425,8 +438,10 @@ class MainWindow(QMainWindow):
             self.pushButtonSenden.setEnabled(self.addOnsFreigeschaltet)
             self.pushButtonSenden.clicked.connect(self.pushButtonSendenClicked)
 
+            ## Nur mit Lizenz
             if self.addOnsFreigeschaltet and gdttoolsL.GdtToolsLizenzschluessel.getSoftwareId(self.lizenzschluessel) == gdttoolsL.SoftwareId.INRGDTPSEUDO:
                 mainLayoutV.addWidget(self.labelPseudolizenz, alignment=Qt.AlignmentFlag.AlignCenter)
+            ## /Nur mit Lizenz
             mainLayoutV.addLayout(kopfLayoutG)
             mainLayoutV.addSpacing(10)
             mainLayoutV.addLayout(inrLayoutH)
@@ -459,12 +474,13 @@ class MainWindow(QMainWindow):
             einstellungenBenutzerAction.triggered.connect(lambda checked=False, neustartfrage=True: self.einstellungenBenutzer(checked, True)) 
             einstellungenDosierungAction = QAction("Dosierungen verwalten", self)
             einstellungenDosierungAction.triggered.connect(lambda checked=False, neustartfrage=True: self.einstellungenDosierung(checked, True)) 
-
+            ## Nur mit Lizenz
             einstellungenErweiterungenAction = QAction("LANR/Lizenzschlüssel", self)
             einstellungenErweiterungenAction.triggered.connect(lambda checked=False, neustartfrage=True: self.einstellungenLanrLizenzschluessel(checked, True)) 
             einstellungenImportExportAction = QAction("Im- /Exportieren", self)
             einstellungenImportExportAction.triggered.connect(self.einstellungenImportExport) 
             einstellungenImportExportAction.setMenuRole(QAction.MenuRole.NoRole)
+            ## /Nur mit Lizenz
             hilfeMenu = menubar.addMenu("Hilfe")
             hilfeWikiAction = QAction("InrGDT Wiki", self)
             hilfeWikiAction.triggered.connect(self.inrgdtWiki)
@@ -484,8 +500,10 @@ class MainWindow(QMainWindow):
             einstellungenMenu.addAction(einstellungenGdtAction)
             einstellungenMenu.addAction(einstellungenBenutzerAction)
             einstellungenMenu.addAction(einstellungenDosierungAction)
+            ## Nur mit Lizenz
             einstellungenMenu.addAction(einstellungenErweiterungenAction)
             einstellungenMenu.addAction(einstellungenImportExportAction)
+            ## /Nur mit Lizenz
             hilfeMenu.addAction(hilfeWikiAction)
             hilfeMenu.addSeparator()
             hilfeMenu.addAction(hilfeUpdateAction)
@@ -686,6 +704,7 @@ class MainWindow(QMainWindow):
                 if mb.exec() == QMessageBox.StandardButton.Yes:
                     os.execl(sys.executable, __file__, *sys.argv)
 
+    ## Nur mit Lizenz
     def einstellungenLanrLizenzschluessel(self, checked, neustartfrage = False):
         de = dialogEinstellungenLanrLizenzschluessel.EinstellungenProgrammerweiterungen(self.configPath)
         if de.exec() == 1:
@@ -705,6 +724,7 @@ class MainWindow(QMainWindow):
         de = dialogEinstellungenImportExport.EinstellungenImportExport(self.configPath)
         if de.exec() == 1:
             pass
+    ## /Nur mit Lizenz
     
     def inrgdtWiki(self, link):
         QDesktopServices.openUrl("https://github.com/retconx/inrgdt/wiki")
