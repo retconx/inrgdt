@@ -196,12 +196,15 @@ class MainWindow(QMainWindow):
             mb.setDefaultButton(QMessageBox.StandardButton.Yes)
             if mb.exec() == QMessageBox.StandardButton.Yes:
                 ## Nur mit Lizenz
-                self.einstellungenLanrLizenzschluessel(False)
+                self.einstellungenLanrLizenzschluessel(False, False)
                 ## /Nur mit Lizenz
-                self.einstellungenGdt(False)
-                self.einstellungenBenutzer(False)
-                self.einstellungenDosierung(False)
-                self.einstellungenAllgmein(False, True)
+                self.einstellungenGdt(False, False)
+                self.einstellungenBenutzer(False, False)
+                self.einstellungenDosierung(False, False)
+                self.einstellungenAllgmein(False, False)
+                mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Die Ersteinrichtung ist abgeschlossen. InrGDT wird beendet.", QMessageBox.StandardButton.Ok)
+                mb.exec()
+                sys.exit()
 
         # Version vergleichen und gegebenenfalls aktualisieren
         configIniBase = configparser.ConfigParser()
@@ -314,7 +317,7 @@ class MainWindow(QMainWindow):
             self.geburtsdatum = str(gd.getInhalt("3103"))[0:2] + "." + str(gd.getInhalt("3103"))[2:4] + "." + str(gd.getInhalt("3103"))[4:8]
         except (IOError, gdtzeile.GdtFehlerException) as e:
             logger.logger.warning("Fehler beim Laden der GDT-Datei: " + str(e))
-            mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von InrGDT", "Fehler beim Laden der GDT-Datei:\n" + str(e) + "\n\nSoll InrGDT dennoch geöffnet werden?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von InrGDT", "Fehler beim Laden der GDT-Datei:\n" + str(e) + "\n\nDieser Fehler hat in der Regel eine der folgenden Ursachen:\n- Die im PVS und in InrGDT konfigurierten GDT-Austauschverzeichnisse stimmen nicht überein.\n- InrGDT wurde nicht aus dem PVS heraus gestartet, so dass keine vom PVS erzeugte GDT-Datei gefunden werden konnte.\n\nSoll InrGDT dennoch geöffnet werden?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
             mb.button(QMessageBox.StandardButton.Yes).setText("Ja")
             mb.button(QMessageBox.StandardButton.No).setText("Nein")
             mb.setDefaultButton(QMessageBox.StandardButton.No)
@@ -467,16 +470,16 @@ class MainWindow(QMainWindow):
             updateAction.triggered.connect(self.updatePruefung) 
             einstellungenMenu = menubar.addMenu("Einstellungen")
             einstellungenAllgemeinAction = QAction("Allgemeine Einstellungen", self)
-            einstellungenAllgemeinAction.triggered.connect(lambda checked=False, neustartfrage=True: self.einstellungenAllgmein(checked, True))
+            einstellungenAllgemeinAction.triggered.connect(lambda checked = False, neustartfrage = True: self.einstellungenAllgmein(checked, neustartfrage))
             einstellungenGdtAction = QAction("GDT-Einstellungen", self)
-            einstellungenGdtAction.triggered.connect(lambda checked=False, neustartfrage=True: self.einstellungenGdt(checked, True))
+            einstellungenGdtAction.triggered.connect(lambda checked = False, neustartfrage = True: self.einstellungenGdt(checked, neustartfrage))
             einstellungenBenutzerAction = QAction("BenutzerInnen verwalten", self)
-            einstellungenBenutzerAction.triggered.connect(lambda checked=False, neustartfrage=True: self.einstellungenBenutzer(checked, True)) 
+            einstellungenBenutzerAction.triggered.connect(lambda checked = False, neustartfrage = True: self.einstellungenBenutzer(checked, neustartfrage)) 
             einstellungenDosierungAction = QAction("Dosierungen verwalten", self)
-            einstellungenDosierungAction.triggered.connect(lambda checked=False, neustartfrage=True: self.einstellungenDosierung(checked, True)) 
+            einstellungenDosierungAction.triggered.connect(lambda checked = False, neustartfrage = True: self.einstellungenDosierung(checked, neustartfrage)) 
             ## Nur mit Lizenz
             einstellungenErweiterungenAction = QAction("LANR/Lizenzschlüssel", self)
-            einstellungenErweiterungenAction.triggered.connect(lambda checked=False, neustartfrage=True: self.einstellungenLanrLizenzschluessel(checked, True)) 
+            einstellungenErweiterungenAction.triggered.connect(lambda checked = False, neustartfrage = True: self.einstellungenLanrLizenzschluessel(checked, neustartfrage)) 
             einstellungenImportExportAction = QAction("Im- /Exportieren", self)
             einstellungenImportExportAction.triggered.connect(self.einstellungenImportExport) 
             einstellungenImportExportAction.setMenuRole(QAction.MenuRole.NoRole)
@@ -624,7 +627,7 @@ class MainWindow(QMainWindow):
             mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Das Log-Verzeichnis wurde nicht gefunden.", QMessageBox.StandardButton.Ok)
             mb.exec() 
 
-    def einstellungenAllgmein(self, checked, neustartfrage=False):
+    def einstellungenAllgmein(self, checked, neustartfrage):
         de = dialogEinstellungenAllgemein.EinstellungenAllgemein(self.configPath)
         if de.exec() == 1:
             self.configIni["Allgemein"]["wochentageanzeigen"] = str(de.checkBoxWochentagsuebertragungAktivieren.isChecked())
@@ -643,7 +646,7 @@ class MainWindow(QMainWindow):
                 if mb.exec() == QMessageBox.StandardButton.Yes:
                     os.execl(sys.executable, __file__, *sys.argv)
 
-    def einstellungenGdt(self, checked, neustartfrage=False):
+    def einstellungenGdt(self, checked, neustartfrage):
         de = dialogEinstellungenGdt.EinstellungenGdt(self.configPath)
         if de.exec() == 1:
             self.configIni["GDT"]["idinrgdt"] = de.lineEditInrGdtId.text()
@@ -663,7 +666,7 @@ class MainWindow(QMainWindow):
                 if mb.exec() == QMessageBox.StandardButton.Yes:
                     os.execl(sys.executable, __file__, *sys.argv)
 
-    def einstellungenBenutzer(self, checked, neustartfrage = False):
+    def einstellungenBenutzer(self, checked, neustartfrage):
         de = dialogEinstellungenBenutzer.EinstellungenBenutzer(self.configPath)
         if de.exec() == 1:
             namen = []
@@ -684,7 +687,7 @@ class MainWindow(QMainWindow):
                 if mb.exec() == QMessageBox.StandardButton.Yes:
                     os.execl(sys.executable, __file__, *sys.argv)
 
-    def einstellungenDosierung(self, checked, neustartfrage = False):
+    def einstellungenDosierung(self, checked, neustartfrage):
         de = dialogEinstellungenDosierung.EinstellungenDosierung(self.configPath)
         if de.exec() == 1:
             self.dosen.clear()
@@ -705,7 +708,7 @@ class MainWindow(QMainWindow):
                     os.execl(sys.executable, __file__, *sys.argv)
 
     ## Nur mit Lizenz
-    def einstellungenLanrLizenzschluessel(self, checked, neustartfrage = False):
+    def einstellungenLanrLizenzschluessel(self, checked, neustartfrage):
         de = dialogEinstellungenLanrLizenzschluessel.EinstellungenProgrammerweiterungen(self.configPath)
         if de.exec() == 1:
             self.configIni["Erweiterungen"]["lanr"] = de.lineEditLanr.text()
