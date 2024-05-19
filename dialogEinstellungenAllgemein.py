@@ -1,4 +1,5 @@
-import configparser, os, re
+import configparser, os, re, sys
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QDialogButtonBox,
     QDialog,
@@ -19,6 +20,11 @@ class EinstellungenAllgemein(QDialog):
     def __init__(self, configPath):
         super().__init__()
 
+        self.fontNormal = QFont()
+        self.fontNormal.setBold(False)
+        self.fontBold = QFont()
+        self.fontBold.setBold(True)
+
         #config.ini lesen
         configIni = configparser.ConfigParser()
         configIni.read(os.path.join(configPath, "config.ini"))
@@ -28,6 +34,8 @@ class EinstellungenAllgemein(QDialog):
         self.wochentageAnzeigen = configIni["Allgemein"]["wochentageanzeigen"] == "True"
         self.leerzeichenVor = configIni["Allgemein"]["lzvor"]
         self.leerzeichenNach = configIni["Allgemein"]["lznach"]
+        self.autoupdate = configIni["Allgemein"]["autoupdate"] == "True"
+        self.updaterpfad = configIni["Allgemein"]["updaterpfad"]
 
         self.setWindowTitle("Allgemeine Einstellungen")
         self.buttonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
@@ -39,22 +47,22 @@ class EinstellungenAllgemein(QDialog):
         # Groupbox Wochentagsübertragung
         groupboxLayoutWochentagsUebertragungG = QGridLayout()
         groupBoxWochentagsUebertragung = QGroupBox("Wochentagsübertragung")
-        groupBoxWochentagsUebertragung.setStyleSheet("font-weight:bold")
+        groupBoxWochentagsUebertragung.setFont(self.fontBold)
         self.checkBoxWochentagsuebertragungAktivieren = QCheckBox("Aktivieren")
-        self.checkBoxWochentagsuebertragungAktivieren.setStyleSheet("font-weight:normal")
+        self.checkBoxWochentagsuebertragungAktivieren.setFont(self.fontNormal)
         self.checkBoxWochentagsuebertragungAktivieren.setChecked(self.wochentageAnzeigen)
         self.checkBoxWochentagsuebertragungAktivieren.stateChanged.connect(self.checkBoxWochentagsuebertragungAktivierenChanged)
         labelLeerzeichen = QLabel("Zeilenkonfiguration:")
-        labelLeerzeichen.setStyleSheet("font-weight:normal")
+        labelLeerzeichen.setFont(self.fontNormal)
         labelLeerzeichenVor = QLabel("Anzahl Leerzeichen Vor:")
-        labelLeerzeichenVor.setStyleSheet("font-weight:normal")
+        labelLeerzeichenVor.setFont(self.fontNormal)
         self.lineEditLeerzeichenVor = QLineEdit(self.leerzeichenVor)
-        self.lineEditLeerzeichenVor.setStyleSheet("font-weight:normal")
+        self.lineEditLeerzeichenVor.setFont(self.fontNormal)
         self.lineEditLeerzeichenVor.setEnabled(self.wochentageAnzeigen)
         labelLeerzeichenNach = QLabel("Anzahl Leerzeichen Nach:")
-        labelLeerzeichenNach.setStyleSheet("font-weight:normal")
+        labelLeerzeichenNach.setFont(self.fontNormal)
         self.lineEditLeerzeichenNach = QLineEdit(self.leerzeichenNach)
-        self.lineEditLeerzeichenNach.setStyleSheet("font-weight:normal")
+        self.lineEditLeerzeichenNach.setFont(self.fontNormal)
         self.lineEditLeerzeichenNach.setEnabled(self.wochentageAnzeigen)
         labelWochentagLegende = QLabel("INR[Leerzeichen Vor]Mo[Leerzeichen Nach][Leerzeichen Vor]Di[Leerzeichen Nach]...[Leerzeichen Vor]So[Leerzeichen Nach]")
         labelWochentagLegende.setStyleSheet("font-weight:normal;font-style:italic")
@@ -70,37 +78,64 @@ class EinstellungenAllgemein(QDialog):
         # Groupbox Einrichtung
         groupboxLayoutEinrichtungG = QGridLayout()
         groupboxEinrichtung = QGroupBox("Einrichtung/Praxis")
-        groupboxEinrichtung.setStyleSheet("font-weight:bold")
+        groupboxEinrichtung.setFont(self.fontBold)
         labelEinrichtungsname = QLabel("Name:")
-        labelEinrichtungsname.setStyleSheet("font-weight:normal")
+        labelEinrichtungsname.setFont(self.fontNormal)
         self.lineEditEinrichtungsname = QLineEdit(self.einrichtungsname)
-        self.lineEditEinrichtungsname.setStyleSheet("font-weight:normal")
+        self.lineEditEinrichtungsname.setFont(self.fontNormal)
         groupboxLayoutEinrichtungG.addWidget(labelEinrichtungsname, 0, 0)
         groupboxLayoutEinrichtungG.addWidget(self.lineEditEinrichtungsname, 0, 1)
         groupboxEinrichtung.setLayout(groupboxLayoutEinrichtungG)
         # Groupbox Archivierung
         groupboxLayoutArchivierungG = QGridLayout()
         groupboxArchivierung = QGroupBox("Archivierung")
-        groupboxArchivierung.setStyleSheet("font-weight:bold")
+        groupboxArchivierung.setFont(self.fontBold)
         labelArchivierungsverzeichnis= QLabel("Archivierungsverzeichnis:")
-        labelArchivierungsverzeichnis.setStyleSheet("font-weight:normal")
+        labelArchivierungsverzeichnis.setFont(self.fontNormal)
         self.lineEditArchivierungsverzeichnis = QLineEdit(self.archivierungspfad)
-        self.lineEditArchivierungsverzeichnis.setStyleSheet("font-weight:normal")
+        self.lineEditArchivierungsverzeichnis.setFont(self.fontNormal)
         self.lineEditArchivierungsverzeichnis.setToolTip(self.archivierungspfad)
         buttonDurchsuchenArchivierungsverzeichnis= QPushButton("Durchsuchen")
-        buttonDurchsuchenArchivierungsverzeichnis.setStyleSheet("font-weight:normal")
+        buttonDurchsuchenArchivierungsverzeichnis.setFont(self.fontNormal)
         buttonDurchsuchenArchivierungsverzeichnis.clicked.connect(self.durchsuchenArchivierungsverzeichnis)
         self.checkBoxVorherigeDokuLaden = QCheckBox("Vorherige Dokumentation beim Programmstart laden")
-        self.checkBoxVorherigeDokuLaden.setStyleSheet("font-weight:normal")
+        self.checkBoxVorherigeDokuLaden.setFont(self.fontNormal)
         self.checkBoxVorherigeDokuLaden.setChecked(self.vorherigeDokuLaden == "True")
         groupboxLayoutArchivierungG.addWidget(labelArchivierungsverzeichnis, 0, 0, 1, 2)
         groupboxLayoutArchivierungG.addWidget(self.lineEditArchivierungsverzeichnis, 1, 0)
         groupboxLayoutArchivierungG.addWidget(buttonDurchsuchenArchivierungsverzeichnis, 1, 1)
         groupboxLayoutArchivierungG.addWidget(self.checkBoxVorherigeDokuLaden, 2, 0, 1, 2)
         groupboxArchivierung.setLayout(groupboxLayoutArchivierungG)
+
+        # GroupBox Updates
+        groupBoxUpdatesLayoutG = QGridLayout()
+        groupBoxUpdates = QGroupBox("Updates")
+        groupBoxUpdates.setFont(self.fontBold)
+        labelUpdaterPfad = QLabel("Updater-Pfad")
+        labelUpdaterPfad.setFont(self.fontNormal)
+        self.lineEditUpdaterPfad= QLineEdit(self.updaterpfad)
+        self.lineEditUpdaterPfad.setFont(self.fontNormal)
+        self.lineEditUpdaterPfad.setToolTip(self.updaterpfad)
+        if not os.path.exists(self.updaterpfad):
+            self.lineEditUpdaterPfad.setStyleSheet("background:rgb(255,200,200)")
+        self.pushButtonUpdaterPfad = QPushButton("...")
+        self.pushButtonUpdaterPfad.setFont(self.fontNormal)
+        self.pushButtonUpdaterPfad.setToolTip("Pfad zum GDT-Tools Updater auswählen")
+        self.pushButtonUpdaterPfad.clicked.connect(self.pushButtonUpdaterPfadClicked)
+        self.checkBoxAutoUpdate = QCheckBox("Automatisch auf Update prüfen")
+        self.checkBoxAutoUpdate.setFont(self.fontNormal)
+        self.checkBoxAutoUpdate.setChecked(self.autoupdate)
+
+        groupBoxUpdatesLayoutG.addWidget(labelUpdaterPfad, 0, 0)
+        groupBoxUpdatesLayoutG.addWidget(self.lineEditUpdaterPfad, 0, 1)
+        groupBoxUpdatesLayoutG.addWidget(self.pushButtonUpdaterPfad, 0, 2)
+        groupBoxUpdatesLayoutG.addWidget(self.checkBoxAutoUpdate, 1, 0)
+        groupBoxUpdates.setLayout(groupBoxUpdatesLayoutG)
+
         dialogLayoutV.addWidget(groupBoxWochentagsUebertragung)
         dialogLayoutV.addWidget(groupboxEinrichtung)
         dialogLayoutV.addWidget(groupboxArchivierung)
+        dialogLayoutV.addWidget(groupBoxUpdates)
         dialogLayoutV.addWidget(self.buttonBox)
         self.setLayout(dialogLayoutV)
 
@@ -119,6 +154,24 @@ class EinstellungenAllgemein(QDialog):
         if fd.exec() == 1:
             self.archivierungspfad = fd.directory()
             self.lineEditArchivierungsverzeichnis.setText(fd.directory().path())
+
+    def pushButtonUpdaterPfadClicked(self):
+        fd = QFileDialog(self)
+        fd.setFileMode(QFileDialog.FileMode.ExistingFile)
+        if os.path.exists(self.lineEditUpdaterPfad.text()):
+            fd.setDirectory(os.path.dirname(self.lineEditUpdaterPfad.text()))
+        fd.setWindowTitle("Updater-Pfad auswählen")
+        fd.setModal(True)
+        if "win32" in sys.platform:
+            fd.setNameFilters(["exe-Dateien (*.exe)"])
+        elif "darwin" in sys.platform:
+            fd.setNameFilters(["app-Bundles (*.app)"])
+        fd.setLabelText(QFileDialog.DialogLabel.Accept, "Auswählen")
+        fd.setLabelText(QFileDialog.DialogLabel.Reject, "Abbrechen")
+        if fd.exec() == 1:
+            self.lineEditUpdaterPfad.setText(fd.selectedFiles()[0])
+            self.lineEditUpdaterPfad.setToolTip(fd.selectedFiles()[0])
+            self.lineEditUpdaterPfad.setStyleSheet("background:rgb(255,255,255)")
     
     def accept(self):
         patternZahl = r"^\d+$"

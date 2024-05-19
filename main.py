@@ -1,4 +1,4 @@
-import sys, configparser, os, datetime, shutil, logger, re
+import sys, configparser, os, datetime, shutil, logger, re, atexit, subprocess
 import gdt, gdtzeile
 ## Nur mit Lizenz
 import gdttoolsL
@@ -152,6 +152,13 @@ class MainWindow(QMainWindow):
             self.wochentageAnzeigen = self.configIni["Allgemein"]["wochentageanzeigen"] == "True"
             self.lzVor = self.configIni["Allgemein"]["lzvor"]
             self.lzNach = self.configIni["Allgemein"]["lznach"]
+        # 1.4.0
+        self.autoupdate = True
+        self.updaterpfad = ""
+        if self.configIni.has_option("Allgemein", "autoupdate"):
+            self.autoupdate = self.configIni["Allgemein"]["autoupdate"] == "True"
+        if self.configIni.has_option("Allgemein", "updaterpfad"):
+            self.updaterpfad = self.configIni["Allgemein"]["updaterpfad"]
         ## /Nachträglich hinzufefügte Options
 
         z = self.configIni["GDT"]["zeichensatz"]
@@ -201,7 +208,7 @@ class MainWindow(QMainWindow):
                 self.einstellungenGdt(False, False)
                 self.einstellungenBenutzer(False, False)
                 self.einstellungenDosierung(False, False)
-                self.einstellungenAllgmein(False, False)
+                self.einstellungenAllgemein(False, False)
                 mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Die Ersteinrichtung ist abgeschlossen. InrGDT wird beendet.", QMessageBox.StandardButton.Ok)
                 mb.exec()
                 sys.exit()
@@ -231,6 +238,11 @@ class MainWindow(QMainWindow):
                     self.configIni["Allgemein"]["wochentageanzeigen"] = "False"
                     self.configIni["Allgemein"]["lzvor"] = self.lzVor
                     self.configIni["Allgemein"]["lznach"] = self.lzNach
+                # 1.3.7 -> 1.4.0 ["Allgemein"]["autoupdate"] und ["Allgemein"]["updaterpfad"] hinzufügen
+                if not self.configIni.has_option("Allgemein", "autoupdate"):
+                    self.configIni["Allgemein"]["autoupdate"] = "True"
+                if not self.configIni.has_option("Allgemein", "updaterpfad"):
+                    self.configIni["Allgemein"]["updaterpfad"] = ""
                 ## /config.ini aktualisieren
 
                 with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
@@ -468,9 +480,13 @@ class MainWindow(QMainWindow):
             updateAction = QAction("Auf Update prüfen", self)
             updateAction.setMenuRole(QAction.MenuRole.ApplicationSpecificRole)
             updateAction.triggered.connect(self.updatePruefung) 
+            hilfeAutoUpdateAction = QAction("Automatisch auf Update prüfen", self)
+            hilfeAutoUpdateAction.setCheckable(True)
+            hilfeAutoUpdateAction.setChecked(self.autoupdate)
+            hilfeAutoUpdateAction.triggered.connect(self.autoUpdatePruefung)
             einstellungenMenu = menubar.addMenu("Einstellungen")
             einstellungenAllgemeinAction = QAction("Allgemeine Einstellungen", self)
-            einstellungenAllgemeinAction.triggered.connect(lambda checked = False, neustartfrage = True: self.einstellungenAllgmein(checked, neustartfrage))
+            einstellungenAllgemeinAction.triggered.connect(lambda checked = False, neustartfrage = True: self.einstellungenAllgemein(checked, neustartfrage))
             einstellungenGdtAction = QAction("GDT-Einstellungen", self)
             einstellungenGdtAction.triggered.connect(lambda checked = False, neustartfrage = True: self.einstellungenGdt(checked, neustartfrage))
             einstellungenBenutzerAction = QAction("BenutzerInnen verwalten", self)
@@ -510,6 +526,7 @@ class MainWindow(QMainWindow):
             hilfeMenu.addAction(hilfeWikiAction)
             hilfeMenu.addSeparator()
             hilfeMenu.addAction(hilfeUpdateAction)
+            hilfeMenu.addAction(hilfeAutoUpdateAction)
             hilfeMenu.addSeparator()
             hilfeMenu.addAction(hilfeUeberAction)
             hilfeMenu.addAction(hilfeEulaAction)
@@ -517,12 +534,13 @@ class MainWindow(QMainWindow):
             hilfeMenu.addAction(hilfeLogExportieren)
             
             # Updateprüfung auf Github
-            try:
-                self.updatePruefung(meldungNurWennUpdateVerfuegbar=True)
-            except Exception as e:
-                mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Updateprüfung nicht möglich.\nBitte überprüfen Sie Ihre Internetverbindung.", QMessageBox.StandardButton.Ok)
-                mb.exec()
-                logger.logger.warning("Updateprüfung nicht möglich: " + str(e))
+            if self.autoupdate:
+                try:
+                    self.updatePruefung(meldungNurWennUpdateVerfuegbar=True)
+                except Exception as e:
+                    mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Updateprüfung nicht möglich.\nBitte überprüfen Sie Ihre Internetverbindung.", QMessageBox.StandardButton.Ok)
+                    mb.exec()
+                    logger.logger.warning("Updateprüfung nicht möglich: " + str(e))
             
             # Gegebenenfalls vorherige Doku laden
             if self.vorherigedokuladen:
@@ -588,17 +606,70 @@ class MainWindow(QMainWindow):
         self.labelArchivdatum.setText(self.archivierungsUntersuchungsdatum)
         self.labelArchivdatum.setFont(self.fontGross)
 
+    # def updatePruefung(self, meldungNurWennUpdateVerfuegbar = False):
+    #     response = requests.get("https://api.github.com/repos/retconx/inrgdt/releases/latest")
+    #     githubRelaseTag = response.json()["tag_name"]
+    #     latestVersion = githubRelaseTag[1:] # ohne v
+    #     if versionVeraltet(self.version, latestVersion):
+    #         mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Die aktuellere InrGDT-Version " + latestVersion + " ist auf <a href='https://github.com/retconx/inrgdt/releases'>Github</a> verfügbar.", QMessageBox.StandardButton.Ok)
+    #         mb.setTextFormat(Qt.TextFormat.RichText)
+    #         mb.exec()
+    #     elif not meldungNurWennUpdateVerfuegbar:
+    #         mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Sie nutzen die aktuelle InrGDT-Version.", QMessageBox.StandardButton.Ok)
+    #         mb.exec()
+
     def updatePruefung(self, meldungNurWennUpdateVerfuegbar = False):
+        logger.logger.info("Updateprüfung")
         response = requests.get("https://api.github.com/repos/retconx/inrgdt/releases/latest")
         githubRelaseTag = response.json()["tag_name"]
         latestVersion = githubRelaseTag[1:] # ohne v
         if versionVeraltet(self.version, latestVersion):
-            mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Die aktuellere InrGDT-Version " + latestVersion + " ist auf <a href='https://www.github.com/retconx/inrgdt/releases'>Github</a> verfügbar.", QMessageBox.StandardButton.Ok)
-            mb.setTextFormat(Qt.TextFormat.RichText)
-            mb.exec()
+            logger.logger.info("Bisher: " + self.version + ", neu: " + latestVersion)
+            if os.path.exists(self.updaterpfad):
+                mb = QMessageBox(QMessageBox.Icon.Question, "Hinweis von InrGDT", "Die aktuellere InrGDT-Version " + latestVersion + " ist auf Github verfügbar.\nSoll der GDT-Tools Updater geladen werden?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+                mb.setDefaultButton(QMessageBox.StandardButton.Yes)
+                mb.button(QMessageBox.StandardButton.Yes).setText("Ja")
+                mb.button(QMessageBox.StandardButton.No).setText("Nein")
+                if mb.exec() == QMessageBox.StandardButton.Yes:
+                    logger.logger.info("Updater wird geladen")
+                    atexit.register(self.updaterLaden)
+                    sys.exit()
+            else:
+                mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Die aktuellere InrGDT-Version " + latestVersion + " ist auf <a href='https://github.com/retconx/inrgdt/releases'>Github</a> verfügbar.", QMessageBox.StandardButton.Ok)
+                mb.setTextFormat(Qt.TextFormat.RichText)
+                mb.exec()
         elif not meldungNurWennUpdateVerfuegbar:
             mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Sie nutzen die aktuelle InrGDT-Version.", QMessageBox.StandardButton.Ok)
             mb.exec()
+
+    def updaterLaden(self):
+        sex = sys.executable
+        programmverzeichnis = ""
+        logger.logger.info("sys.executable: " + sex)
+        if "win32" in sys.platform:
+            programmverzeichnis = sex[:sex.rfind("inrgdt.exe")]
+        elif "darwin" in sys.platform:
+            programmverzeichnis = sex[:sex.find("InrGDT.app")]
+        elif "win32" in sys.platform:
+            programmverzeichnis = sex[:sex.rfind("inrgdt")]
+        logger.logger.info("Programmverzeichnis: " + programmverzeichnis)
+        try:
+            if "win32" in sys.platform:
+                subprocess.Popen([self.updaterpfad, "inrgdt", self.version, programmverzeichnis], creationflags=subprocess.DETACHED_PROCESS) # type: ignore
+            elif "darwin" in sys.platform:
+                subprocess.Popen(["open", "-a", self.updaterpfad, "--args", "inrgdt", self.version, programmverzeichnis])
+            elif "linux" in sys.platform:
+                subprocess.Popen([self.updaterpfad, "inrgdt", self.version, programmverzeichnis])
+        except Exception as e:
+            mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Der GDT-Tools Updater konnte nicht gestartet werden", QMessageBox.StandardButton.Ok)
+            logger.logger.error("Fehler beim Starten des GDT-Tools Updaters: " + str(e))
+            mb.exec()
+
+    def autoUpdatePruefung(self, checked):
+        self.autoupdate = checked
+        self.configIni["Allgemein"]["autoupdate"] = str(checked)
+        with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
+            self.configIni.write(configfile)
 
     def ueberInrGdt(self):
         de = dialogUeberInrGdt.UeberInrGdt()
@@ -627,7 +698,7 @@ class MainWindow(QMainWindow):
             mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Das Log-Verzeichnis wurde nicht gefunden.", QMessageBox.StandardButton.Ok)
             mb.exec() 
 
-    def einstellungenAllgmein(self, checked, neustartfrage):
+    def einstellungenAllgemein(self, checked, neustartfrage):
         de = dialogEinstellungenAllgemein.EinstellungenAllgemein(self.configPath)
         if de.exec() == 1:
             self.configIni["Allgemein"]["wochentageanzeigen"] = str(de.checkBoxWochentagsuebertragungAktivieren.isChecked())
@@ -636,6 +707,8 @@ class MainWindow(QMainWindow):
             self.configIni["Allgemein"]["einrichtungsname"] = de.lineEditEinrichtungsname.text()
             self.configIni["Allgemein"]["archivierungspfad"] = de.lineEditArchivierungsverzeichnis.text()
             self.configIni["Allgemein"]["vorherigedokuladen"] = str(de.checkBoxVorherigeDokuLaden.isChecked())
+            self.configIni["Allgemein"]["updaterpfad"] = de.lineEditUpdaterPfad.text()
+            self.configIni["Allgemein"]["autoupdate"] = str(de.checkBoxAutoUpdate.isChecked())
             with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
                 self.configIni.write(configfile)
             if neustartfrage:
