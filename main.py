@@ -635,7 +635,7 @@ class MainWindow(QMainWindow):
                     atexit.register(self.updaterLaden)
                     sys.exit()
             else:
-                mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Die aktuellere InrGDT-Version " + latestVersion + " ist auf <a href='https://github.com/retconx/inrgdt/releases'>Github</a> verfügbar.", QMessageBox.StandardButton.Ok)
+                mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von InrGDT", "Die aktuellere InrGDT-Version " + latestVersion + " ist auf <a href='https://github.com/retconx/inrgdt/releases'>Github</a> verfügbar.<br />Bitte beachten Sie auch die Möglichkeit, den Updateprozess mit dem <a href='https://github.com/retconx/gdttoolsupdater/wiki'>GDT-Tools Updater</a> zu automatisieren.", QMessageBox.StandardButton.Ok)
                 mb.setTextFormat(Qt.TextFormat.RichText)
                 mb.exec()
         elif not meldungNurWennUpdateVerfuegbar:
