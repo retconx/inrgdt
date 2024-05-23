@@ -450,7 +450,6 @@ class MainWindow(QMainWindow):
             self.pushButtonSenden = QPushButton("Daten senden")
             self.pushButtonSenden.setStyleSheet("background:rgb(200,255,200);border-color:rgb(0,0,0);font-size:18px")
             self.pushButtonSenden.setFixedHeight(60)
-            self.pushButtonSenden.setEnabled(self.addOnsFreigeschaltet)
             self.pushButtonSenden.clicked.connect(self.pushButtonSendenClicked)
 
             ## Nur mit Lizenz
@@ -466,8 +465,18 @@ class MainWindow(QMainWindow):
             mainLayoutV.addLayout(untdatBenutzerLayoutG)
             mainLayoutV.addWidget(self.pushButtonSenden)
             mainLayoutV.addSpacing(10)
+            ## Nur mit Lizenz
+            if self.addOnsFreigeschaltet:
+                gueltigeLizenztage = gdttoolsL.GdtToolsLizenzschluessel.nochTageGueltig(self.lizenzschluessel)
+                if gueltigeLizenztage  > 0 and gueltigeLizenztage <= 30:
+                    labelLizenzLaeuftAus = QLabel("Die genutzte Lizenz ist noch " + str(gueltigeLizenztage) + " Tage gültig.")
+                    labelLizenzLaeuftAus.setStyleSheet("color:rgb(200,0,0)")
+                    mainLayoutV.addWidget(labelLizenzLaeuftAus, alignment=Qt.AlignmentFlag.AlignCenter)
+            else:
+                self.pushButtonSenden.setEnabled(False)
+                self.pushButtonSenden.setText("Keine gültige Lizenz")
+            ## /Nur mit Lizenz
             self.widget.setLayout(mainLayoutV)
-
             self.setCentralWidget(self.widget)
             self.lineEditInr.setFocus()
 
