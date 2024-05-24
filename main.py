@@ -401,7 +401,7 @@ class MainWindow(QMainWindow):
                     pushButtonDosenTemp[wt].setCheckable(True)
                     pushButtonDosenTemp[wt].setFont(self.fontGross)
                     pushButtonDosenTemp[wt].setAutoFillBackground(True)
-                    pushButtonDosenTemp[wt].clicked.connect(lambda dosiszeile=dosis, wochentagspalte=wt: self.pushButtonDosisClicked(dosiszeile, wochentagspalte))
+                    pushButtonDosenTemp[wt].clicked.connect(lambda checked=False, dosiszeile=dosis, wochentagspalte=wt: self.pushButtonDosisClicked(checked, dosiszeile, wochentagspalte))
                     inrLayoutG.addWidget(pushButtonDosenTemp[wt], dosis + 1, wt)
                 self.pushButtonDosenAlle.append(QPushButton(buttonText))
                 self.pushButtonDosenAlle[dosis].setFont(self.fontBoldGross)
@@ -822,7 +822,7 @@ class MainWindow(QMainWindow):
             self.lineEditInr.setStyleSheet("background:rgb(255,255,255)")
             self.pushButtonSenden.setEnabled(True)
 
-    def pushButtonDosisClicked(self, dosiszeile, wochentagspalte):
+    def pushButtonDosisClicked(self, checked, dosiszeile, wochentagspalte):
         if self.labelArchivdatum.text() != "--.--.----":
             self.labelArchivdatum.setFont(self.fontGrossStrikeOut)
         for zeile in range(len(self.dosen)):
