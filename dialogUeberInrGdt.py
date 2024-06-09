@@ -16,14 +16,14 @@ class UeberInrGdt(QDialog):
         self.buttonBox.accepted.connect(self.accept) # type: ignore
 
         dialogLayoutV = QVBoxLayout()
-        labelBeschreibung = QLabel("<span style='color:rgb(0,0,200);font-weight:bold'>Programmbeschreibung:</span><br>InrGDT ist eine eigenständig plattformunabhängig lauffähige Software zur elektronischen Dokumentation des INR-Wertes sowie der Phenprocoumon-/ Warfarin-Dosierung via GDT-Schnittstelle in ein beliebiges Praxisverwaltungssystem.")
+        labelBeschreibung = QLabel("<span style='font-weight:bold'>Programmbeschreibung:</span><br>InrGDT ist eine eigenständig plattformunabhängig lauffähige Software zur elektronischen Dokumentation des INR-Wertes sowie der Phenprocoumon-/ Warfarin-Dosierung via GDT-Schnittstelle in ein beliebiges Praxisverwaltungssystem.")
         labelBeschreibung.setAlignment(Qt.AlignmentFlag.AlignJustify)
         labelBeschreibung.setWordWrap(True)
         labelBeschreibung.setTextFormat(Qt.TextFormat.RichText)
-        labelEntwickelsVon = QLabel("<span style='color:rgb(0,0,200);font-weight:bold'>Entwickelt von:</span><br>Fabian Treusch<br><a href='https://gdttools.de'>gdttools.de</a>")
+        labelEntwickelsVon = QLabel("<span style='font-weight:bold'>Entwickelt von:</span><br>Fabian Treusch<br><a href='https://gdttools.de'>gdttools.de</a>")
         labelEntwickelsVon.setTextFormat(Qt.TextFormat.RichText)
         labelEntwickelsVon.linkActivated.connect(self.gdtToolsLinkGeklickt)
-        labelHilfe = QLabel("<span style='color:rgb(0,0,200);font-weight:bold'>Hilfe:</span><br><a href='https://github.com/retconx/inrgdt/wiki'>InrGDT Wiki</a>")
+        labelHilfe = QLabel("<span style='font-weight:bold'>Hilfe:</span><br><a href='https://github.com/retconx/inrgdt/wiki'>InrGDT Wiki</a>")
         labelHilfe.setTextFormat(Qt.TextFormat.RichText)
         labelHilfe.linkActivated.connect(self.githubWikiLinkGeklickt)
 

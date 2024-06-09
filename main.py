@@ -20,7 +20,8 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QCheckBox,
     QLineEdit,
-    QTextEdit
+    QTextEdit,
+    QGroupBox
 )
 import requests
 
@@ -340,6 +341,7 @@ class MainWindow(QMainWindow):
 
             # Formularaufbau
             self.wochentage = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+            self.wochentageLang = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
             mainLayoutV = QVBoxLayout()
             kopfLayoutG = QGridLayout()
             inrLayoutH = QHBoxLayout()
@@ -408,6 +410,35 @@ class MainWindow(QMainWindow):
                 self.pushButtonDosenAlle[dosis].clicked.connect(lambda checked=False, dosiszeile=dosis: self.pushButtonAlleClicked(checked, dosiszeile))
                 inrLayoutG.addWidget(self.pushButtonDosenAlle[dosis])
                 self.pushButtonDosen.append(pushButtonDosenTemp.copy())
+
+            # Folgewoche
+            groupBoxFolgewoche = QGroupBox("Folgewoche")
+            groupBoxFolgewoche.setFont(self.fontGross)
+            groupBoxFolgewocheLayoutG = QGridLayout()
+            self.pushButtonFolgewocheAktivieren = QPushButton("Aktivieren")
+            self.pushButtonFolgewocheAktivieren.setCheckable(True)
+            self.pushButtonFolgewocheAktivieren.setAutoFillBackground(True)
+            self.pushButtonFolgewocheAktivieren.clicked.connect(self.pushButtonFolgewocheAktivierenClicked)
+            groupBoxFolgewocheLayoutG.addWidget(self.pushButtonFolgewocheAktivieren, 0, 0, 1, 8)
+            self.comboBoxFolgewoche = []
+            for wt in range(7):
+                self.comboBoxFolgewoche.append(QComboBox())
+                self.comboBoxFolgewoche[wt].setFont(self.fontGross)
+                self.comboBoxFolgewoche[wt].setEnabled(False)
+                self.comboBoxFolgewoche[wt].setFixedHeight(30)
+                for dosis in self.dosen:
+                    if dosis == "0":
+                        self.comboBoxFolgewoche[wt].addItem("0")
+                    else:
+                        self.comboBoxFolgewoche[wt].addItem(dosis.replace(".25", "\u00bc").replace(".5", "\u00bd").replace(".75", "\u00be").replace(".", "").replace("0", ""))
+                groupBoxFolgewocheLayoutG.addWidget(self.comboBoxFolgewoche[wt], len(self.dosen) + 2, wt)
+            self.pushButtonFolgewocheZuruecksetzen = QPushButton("\U0001f504")
+            self.pushButtonFolgewocheZuruecksetzen.setToolTip("Zurücksetzen")
+            self.pushButtonFolgewocheZuruecksetzen.setFont(self.fontGross)
+            self.pushButtonFolgewocheZuruecksetzen.setEnabled(False)
+            self.pushButtonFolgewocheZuruecksetzen.clicked.connect(self.pushButtonFolgewocheZuruecksetzenClicked)
+            groupBoxFolgewocheLayoutG.addWidget(self.pushButtonFolgewocheZuruecksetzen, len(self.dosen) + 2, 7)
+            groupBoxFolgewoche.setLayout(groupBoxFolgewocheLayoutG)
             
             # Bemerkungsfeld
             labelBemerkungen = QLabel("Bemerkungen")
@@ -418,7 +449,7 @@ class MainWindow(QMainWindow):
 
             # Untersuchungsdatum und Benutzer
             untdatBenutzerLayoutG = QGridLayout()
-            labelUntersuchungsdatum = QLabel("Untersuchungsdatum:")
+            labelUntersuchungsdatum = QLabel("Untersucht am:")
             labelUntersuchungsdatum.setFont(self.fontGross)
             self.untersuchungsdatum = QDate().currentDate()
             self.dateEditUntersuchungsdatum = QDateEdit()
@@ -426,7 +457,7 @@ class MainWindow(QMainWindow):
             self.dateEditUntersuchungsdatum.setDate(self.untersuchungsdatum)
             self.dateEditUntersuchungsdatum.setDisplayFormat("dd.MM.yyyy")
             self.dateEditUntersuchungsdatum.setCalendarPopup(True)
-            self.dateEditUntersuchungsdatum.userDateChanged.connect(self.dateEditUntersuchungsdatumChanged) # type: ignore
+            self.dateEditUntersuchungsdatum.userDateChanged.connect(self.dateEditUntersuchungsdatumChanged)
             untdatBenutzerLayoutG.addWidget(labelUntersuchungsdatum, 0, 0)
             untdatBenutzerLayoutG.addWidget(self.dateEditUntersuchungsdatum, 1, 0)
             labelBenutzer = QLabel("Dokumentiert von:")
@@ -439,12 +470,23 @@ class MainWindow(QMainWindow):
             if self.aktuelleBenuztzernummer < len(self.benutzernamenListe):
                 aktBenNum = self.aktuelleBenuztzernummer
             self.comboBoxBenutzer.setCurrentIndex(aktBenNum)
-            untdatBenutzerLayoutG.addWidget(labelBenutzer, 0, 1, 1, 2)
+            untdatBenutzerLayoutG.addWidget(labelBenutzer, 0, 1)
             untdatBenutzerLayoutG.addWidget(self.comboBoxBenutzer, 1, 1)
+            labelNaechsteKontrolle = QLabel("Nächste Kontrolle:")
+            labelNaechsteKontrolle.setFont(self.fontGross)
+            self.naechsteKontrolle = QDate().currentDate()
+            self.dateEditNaechsteKontrolle = QDateEdit()
+            self.dateEditNaechsteKontrolle.setFont(self.fontGross)
+            self.dateEditNaechsteKontrolle.setDate(self.naechsteKontrolle)
+            self.dateEditNaechsteKontrolle.setDisplayFormat("dd.MM.yyyy")
+            self.dateEditNaechsteKontrolle.setCalendarPopup(True)
+            self.dateEditNaechsteKontrolle.userDateChanged.connect(self.dateEditNaechsteKontrolleChanged)
+            untdatBenutzerLayoutG.addWidget(labelNaechsteKontrolle, 0, 2, 1, 2)
+            untdatBenutzerLayoutG.addWidget(self.dateEditNaechsteKontrolle, 1, 2)
             self.checkBoxPdfErstellen = QCheckBox("PDF-Plan erstellen")
             self.checkBoxPdfErstellen.setFont(self.fontGross)
             self.checkBoxPdfErstellen.setChecked(self.immerpdf)
-            untdatBenutzerLayoutG.addWidget(self.checkBoxPdfErstellen, 1, 2)
+            untdatBenutzerLayoutG.addWidget(self.checkBoxPdfErstellen, 1, 3)
 
             # Senden-Button
             self.pushButtonSenden = QPushButton("Daten senden")
@@ -460,6 +502,7 @@ class MainWindow(QMainWindow):
             mainLayoutV.addSpacing(10)
             mainLayoutV.addLayout(inrLayoutH)
             mainLayoutV.addLayout(inrLayoutG)
+            mainLayoutV.addWidget(groupBoxFolgewoche)
             mainLayoutV.addWidget(labelBemerkungen)
             mainLayoutV.addWidget(self.textEditBemerkungen)
             mainLayoutV.addLayout(untdatBenutzerLayoutG)
@@ -554,6 +597,7 @@ class MainWindow(QMainWindow):
             # Gegebenenfalls vorherige Doku laden
             if self.vorherigedokuladen:
                 self.mitVorherigerUntersuchungAusfuellen()
+                self.pushButtonFolgewocheZuruecksetzenClicked()
         else:
             sys.exit()
 
@@ -614,18 +658,6 @@ class MainWindow(QMainWindow):
         self.mitVorherigerUntersuchungAusfuellen()
         self.labelArchivdatum.setText(self.archivierungsUntersuchungsdatum)
         self.labelArchivdatum.setFont(self.fontGross)
-
-    # def updatePruefung(self, meldungNurWennUpdateVerfuegbar = False):
-    #     response = requests.get("https://api.github.com/repos/retconx/inrgdt/releases/latest")
-    #     githubRelaseTag = response.json()["tag_name"]
-    #     latestVersion = githubRelaseTag[1:] # ohne v
-    #     if versionVeraltet(self.version, latestVersion):
-    #         mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Die aktuellere InrGDT-Version " + latestVersion + " ist auf <a href='https://github.com/retconx/inrgdt/releases'>Github</a> verfügbar.", QMessageBox.StandardButton.Ok)
-    #         mb.setTextFormat(Qt.TextFormat.RichText)
-    #         mb.exec()
-    #     elif not meldungNurWennUpdateVerfuegbar:
-    #         mb = QMessageBox(QMessageBox.Icon.Warning, "Hinweis von InrGDT", "Sie nutzen die aktuelle InrGDT-Version.", QMessageBox.StandardButton.Ok)
-    #         mb.exec()
 
     def updatePruefung(self, meldungNurWennUpdateVerfuegbar = False):
         logger.logger.info("Updateprüfung")
@@ -839,11 +871,34 @@ class MainWindow(QMainWindow):
             for pushButton in self.pushButtonDosen[dosiszeile]:
                 pushButton.setChecked(True)
 
+    def pushButtonFolgewocheAktivierenClicked(self, checked):
+        for wt in range(7):
+            self.comboBoxFolgewoche[wt].setEnabled(checked)
+        self.pushButtonFolgewocheZuruecksetzen.setEnabled(checked)
+        if checked:
+            # self.pushButtonFolgewocheZuruecksetzenClicked()
+            self.pushButtonFolgewocheAktivieren.setText("Deaktivieren")
+        else:
+            self.pushButtonFolgewocheAktivieren.setText("Aktivieren")
+
+    def pushButtonFolgewocheZuruecksetzenClicked(self):
+        for wt in range(7):
+            dosisFestgelegt = False
+            for zeile in range(len(self.dosen)):
+                if self.pushButtonDosen[zeile][wt].isChecked():
+                    dosisFestgelegt = True
+                    self.comboBoxFolgewoche[wt].setCurrentText(self.pushButtonDosen[zeile][wt].text())
+            if not dosisFestgelegt:
+                self.comboBoxFolgewoche[wt].setCurrentText("0")
+
     def dateEditUntersuchungsdatumChanged(self, datum):
         self.untersuchungsdatum = datum
 
     def comboBoxBenutzerIndexChanged(self, index):
         self.aktuelleBenuztzernummer = index
+    
+    def dateEditNaechsteKontrolleChanged(self, datum):
+        self.naechsteKontrolle = datum
                 
     def pushButtonSendenClicked(self):
         logger.logger.info("Daten senden geklickt")
@@ -869,6 +924,7 @@ class MainWindow(QMainWindow):
                 gd.addZeile("6305", os.path.join(basedir, "pdf/inr_temp.pdf"))
 
             # Wochentagsübertragung
+            wochentagszeile = ""
             if self.wochentageAnzeigen:
                 lzVor = ""
                 for i in range(int(self.lzVor)):
@@ -880,6 +936,14 @@ class MainWindow(QMainWindow):
                 for wt in self.wochentage:
                     wochentagszeile += lzVor + wt + lzNach
                 gd.addZeile("6220", wochentagszeile)
+            
+            untWt = self.untersuchungsdatum.dayOfWeek() # Montag = 1, Sonntag = 7
+            montagDerUntersuchungswoche = self.untersuchungsdatum.addDays(1 - untWt)
+            sonntagDerUntersuchungswoche = self.untersuchungsdatum.addDays(7 - untWt)
+            montagDerFolgewoche = sonntagDerUntersuchungswoche.addDays(1)
+            vonDatum = "{:>02}".format(str(montagDerUntersuchungswoche.day())) + "." + "{:>02}".format(str(montagDerUntersuchungswoche.month())) + "." + str(montagDerUntersuchungswoche.year())
+            bisDatum = "{:>02}".format(str(sonntagDerUntersuchungswoche.day())) + "." + "{:>02}".format(str(sonntagDerUntersuchungswoche.month())) + "." + str(sonntagDerUntersuchungswoche.year())
+            moFolgeDatum = "{:>02}".format(str(montagDerFolgewoche.day())) + "." + "{:>02}".format(str(montagDerFolgewoche.month())) + "." + str(montagDerFolgewoche.year())
             
             # Befund
             befundzeile = "{:.1f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",")
@@ -900,8 +964,23 @@ class MainWindow(QMainWindow):
             if self.checkBoxExtern.isChecked():
                 externBenutzer = "extern/" + externBenutzer
             befundzeile += "  WD: " + "{:.2f}".format(wochendosis).replace(".", ",") + " (" + externBenutzer + ")"
+            if self.pushButtonFolgewocheAktivieren.isChecked():
+                gd.addZeile("6220", vonDatum + " - " + bisDatum + ":")
             gd.addZeile("6220", befundzeile)
-
+            wochendosenFolgewoche = []
+            wochendosisFolgewoche = 0
+            if self.pushButtonFolgewocheAktivieren.isChecked():
+                gd.addZeile("6220", "Ab " + moFolgeDatum + ":")
+                gd.addZeile("6220", wochentagszeile)
+                befundzeile = "{:.1f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",")
+                befundzeile += "     "
+                for wt in range(7):
+                    wochendosenFolgewoche.append("{:.2f}".format(float(self.dosen[self.comboBoxFolgewoche[wt].currentIndex()])).replace(".", ","))
+                    wochendosisFolgewoche += float(self.dosen[self.comboBoxFolgewoche[wt].currentIndex()])
+                befundzeile += "  -  ".join(wochendosenFolgewoche)
+                befundzeile += "  WD: " + "{:.2f}".format(wochendosisFolgewoche).replace(".", ",") + " (" + externBenutzer + ")"
+                gd.addZeile("6220", befundzeile)
+            
             # Benutzer
             gd.addZeile("6227", self.textEditBemerkungen.toPlainText())
             logger.logger.info("Befund und Kommentar erzeugt")
@@ -927,21 +1006,48 @@ class MainWindow(QMainWindow):
                     pdf.cell(0, 10, new_x="LMARGIN", new_y="NEXT")
                     pdf.set_font("helvetica", "", 16)
                     untdat = "{:>02}".format(str(self.dateEditUntersuchungsdatum.date().day())) + "." + "{:>02}".format(str(self.dateEditUntersuchungsdatum.date().month())) + "." + str(self.dateEditUntersuchungsdatum.date().year())
-                    pdf.cell(0, 14, "Gültig ab " + untdat + " (INR: " + "{:.1f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",") +  ")", align="C", new_x="LMARGIN", new_y="NEXT")
-                    pdf.set_x(35)
+                    nkDat = ""
+                    if self.naechsteKontrolle != QDate().currentDate():
+                        nkDat = self.wochentageLang[self.dateEditNaechsteKontrolle.date().dayOfWeek() - 1] + ", " + "{:>02}".format(str(self.dateEditNaechsteKontrolle.date().day())) + "." + "{:>02}".format(str(self.dateEditNaechsteKontrolle.date().month())) + "." + str(self.dateEditNaechsteKontrolle.date().year())
+                    pdf.cell(0, 14, "Aktueller INR-Wert: " + "{:.1f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",") +  " (" + untdat + ")", align="C", new_x="LMARGIN", new_y="NEXT")
+                    if self.pushButtonFolgewocheAktivieren.isChecked():
+                        x = 10
+                    else:
+                        x = 35
+                    pdf.set_x(x)
                     pdf.set_font("helvetica", "B", 16)
+                    if self.pushButtonFolgewocheAktivieren.isChecked():
+                        pdf.cell(50, 16, "Zeitraum", border=1, align="C")
+
                     for wt in range(7):
                         if wt < 6:
                             pdf.cell(20, 16, self.wochentage[wt], border=1, align="C")
                         else:
                             pdf.cell(20, 16, self.wochentage[wt], border=1, align="C", new_x="LMARGIN", new_y="NEXT")
-                    pdf.set_x(35)
+                    pdf.set_x(x)
                     pdf.set_font("helvetica", "", 16)
+                    if self.pushButtonFolgewocheAktivieren.isChecked():
+                        pdf.cell(50, 7, " " + vonDatum + " -", border="TLR", new_y="NEXT",)
+                        pdf.set_x(x)
+                        pdf.cell(50, 7, " " + bisDatum, border="BLR")
+                        pdf.set_y(pdf.get_y() - 7)
+                        pdf.set_x(x + 50)
                     for wt in range(7):
                         if wt < 6:
                             pdf.cell(20, 14, wochendosen[wt].replace(",25", "\u00bc").replace(",50", "\u00bd").replace(",75", "\u00be").replace(",", "").replace("0", ""), border=1, align="C")
                         else:
                             pdf.cell(20, 14, wochendosen[wt].replace(",25", "\u00bc").replace(",50", "\u00bd").replace(",75", "\u00be").replace(",", "").replace("0", ""), border=1, align="C", new_x="LMARGIN", new_y="NEXT")
+                    if self.pushButtonFolgewocheAktivieren.isChecked():
+                        pdf.set_x(x)
+                        pdf.cell(50, 14, " Ab " + moFolgeDatum, border=1)
+                        for wt in range(7):
+                            pdf.cell(20, 14, self.comboBoxFolgewoche[wt].currentText(), border=1, align="C")
+                        pdf.cell(0, 10, new_x="LMARGIN", new_y="NEXT")
+
+                    # Ggf. nächste Kontrolle
+                    if nkDat != "":
+                        pdf.cell(0, 10, new_x="LMARGIN", new_y="NEXT")
+                        pdf.cell(0, 14, "Nächste Kontrolle: " + nkDat)
                     pdf.set_y(-30)
                     pdf.set_font("helvetica", "I", 10)
                     pdf.cell(0, 10, "Generiert von InrGDT V" + self.version + " (\u00a9 GDT-Tools " + str(datetime.date.today().year) + ")", align="R")
@@ -967,6 +1073,11 @@ class MainWindow(QMainWindow):
                         logger.logger.info("Allgemein/immerpdf in config.ini auf " + str(self.checkBoxPdfErstellen.isChecked()) + " gesetzt")
                     # Archivieren
                     zusammenfassung = untersuchungsdatum + "::" + "::".join(wochendosen)
+                    if self.pushButtonFolgewocheAktivieren.isChecked():
+                        folgewochendosen = []
+                        for wt in range(7):
+                            folgewochendosen.append("{:.2f}".format(float(self.dosen[self.comboBoxFolgewoche[wt].currentIndex()])).replace(".", ","))
+                        zusammenfassung = untersuchungsdatum + "::" + "::".join(folgewochendosen)
                     if self.archivierungspfad != "":
                         if os.path.exists(self.archivierungspfad):
                             speicherdatum = str(self.dateEditUntersuchungsdatum.date().year()) + "{:>02}".format(str(self.dateEditUntersuchungsdatum.date().month())) + "{:>02}".format(str(self.dateEditUntersuchungsdatum.date().day()))
