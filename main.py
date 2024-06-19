@@ -160,6 +160,10 @@ class MainWindow(QMainWindow):
             self.autoupdate = self.configIni["Allgemein"]["autoupdate"] == "True"
         if self.configIni.has_option("Allgemein", "updaterpfad"):
             self.updaterpfad = self.configIni["Allgemein"]["updaterpfad"]
+        # 1.5.0
+        self.bemerkungenAufPdf = False
+        if self.configIni.has_option("Allgemein", "bemerkungenaufpdf"):
+            self.bemerkungenAufPdf = self.configIni["Allgemein"]["bemerkungenaufpdf"] == "True"
         ## /Nachträglich hinzufefügte Options
 
         z = self.configIni["GDT"]["zeichensatz"]
@@ -244,6 +248,9 @@ class MainWindow(QMainWindow):
                     self.configIni["Allgemein"]["autoupdate"] = "True"
                 if not self.configIni.has_option("Allgemein", "updaterpfad"):
                     self.configIni["Allgemein"]["updaterpfad"] = ""
+                # 1.5.0 -> 1.6.0 ["Allgemein"]["bemerkungenaufpdf"] hinzufügen
+                if not self.configIni.has_option("Allgemein", "bemerkungenaufpdf"):
+                    self.configIni["Allgemein"]["bemerkungenaufpdf"] = "False"
                 ## /config.ini aktualisieren
 
                 with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
@@ -441,11 +448,19 @@ class MainWindow(QMainWindow):
             groupBoxFolgewoche.setLayout(groupBoxFolgewocheLayoutG)
             
             # Bemerkungsfeld
-            labelBemerkungen = QLabel("Bemerkungen")
+            bemerkungenLayoutH = QHBoxLayout()
+            labelBemerkungen = QLabel("Bemerkungen:")
             labelBemerkungen.setFont(self.fontGross)
             self.textEditBemerkungen = QTextEdit()
             self.textEditBemerkungen.setFixedHeight(50)
             self.textEditBemerkungen.setFont(self.fontGross)
+            self.checkBoxBemerkungenAufPdf = QCheckBox("Bemerkungen auf PDF-Plan übernehmen")
+            self.checkBoxBemerkungenAufPdf.setFont(self.fontGross)
+            self.checkBoxBemerkungenAufPdf.setEnabled(self.immerpdf)
+            self.checkBoxBemerkungenAufPdf.setChecked(self.bemerkungenAufPdf)
+            self.checkBoxBemerkungenAufPdf.clicked.connect(self.checkBoxBemerkungenAufPdfClicked)
+            bemerkungenLayoutH.addWidget(labelBemerkungen)
+            bemerkungenLayoutH.addWidget(self.checkBoxBemerkungenAufPdf)
 
             # Untersuchungsdatum und Benutzer
             untdatBenutzerLayoutG = QGridLayout()
@@ -486,6 +501,7 @@ class MainWindow(QMainWindow):
             self.checkBoxPdfErstellen = QCheckBox("PDF-Plan erstellen")
             self.checkBoxPdfErstellen.setFont(self.fontGross)
             self.checkBoxPdfErstellen.setChecked(self.immerpdf)
+            self.checkBoxPdfErstellen.clicked.connect(self.checkBoxPdfErstellenClicked)
             untdatBenutzerLayoutG.addWidget(self.checkBoxPdfErstellen, 1, 3)
 
             # Senden-Button
@@ -503,7 +519,7 @@ class MainWindow(QMainWindow):
             mainLayoutV.addLayout(inrLayoutH)
             mainLayoutV.addLayout(inrLayoutG)
             mainLayoutV.addWidget(groupBoxFolgewoche)
-            mainLayoutV.addWidget(labelBemerkungen)
+            mainLayoutV.addLayout(bemerkungenLayoutH)
             mainLayoutV.addWidget(self.textEditBemerkungen)
             mainLayoutV.addLayout(untdatBenutzerLayoutG)
             mainLayoutV.addWidget(self.pushButtonSenden)
@@ -850,7 +866,7 @@ class MainWindow(QMainWindow):
         if re.match(reInr, self.lineEditInr.text()) == None:
             self.lineEditInr.setStyleSheet("background:rgb(255,200,200)")
             self.pushButtonSenden.setEnabled(False)
-        else:
+        elif self.addOnsFreigeschaltet:
             self.lineEditInr.setStyleSheet("background:rgb(255,255,255)")
             self.pushButtonSenden.setEnabled(True)
 
@@ -899,6 +915,12 @@ class MainWindow(QMainWindow):
     
     def dateEditNaechsteKontrolleChanged(self, datum):
         self.naechsteKontrolle = datum
+
+    def checkBoxPdfErstellenClicked(self, checked):
+        self.checkBoxBemerkungenAufPdf.setEnabled(checked)
+
+    def checkBoxBemerkungenAufPdfClicked(self, checked):
+        self.bemerkungenAufPdf = checked
                 
     def pushButtonSendenClicked(self):
         logger.logger.info("Daten senden geklickt")
@@ -1034,9 +1056,15 @@ class MainWindow(QMainWindow):
                         pdf.set_x(x + 50)
                     for wt in range(7):
                         if wt < 6:
-                            pdf.cell(20, 14, wochendosen[wt].replace(",25", "\u00bc").replace(",50", "\u00bd").replace(",75", "\u00be").replace(",", "").replace("0", ""), border=1, align="C")
+                            if wochendosen[wt] != "0,00":
+                                pdf.cell(20, 14, wochendosen[wt].replace(",25", "\u00bc").replace(",50", "\u00bd").replace(",75", "\u00be").replace(",", "").replace("0", ""), border=1, align="C")
+                            else:
+                                pdf.cell(20, 14, "0", border=1, align="C")
                         else:
-                            pdf.cell(20, 14, wochendosen[wt].replace(",25", "\u00bc").replace(",50", "\u00bd").replace(",75", "\u00be").replace(",", "").replace("0", ""), border=1, align="C", new_x="LMARGIN", new_y="NEXT")
+                            if wochendosen[wt] != "0,00":
+                                pdf.cell(20, 14, wochendosen[wt].replace(",25", "\u00bc").replace(",50", "\u00bd").replace(",75", "\u00be").replace(",", "").replace("0", ""), border=1, align="C", new_x="LMARGIN", new_y="NEXT")
+                            else:
+                                pdf.cell(20, 14, "0", border=1, align="C", new_x="LMARGIN", new_y="NEXT")
                     if self.pushButtonFolgewocheAktivieren.isChecked():
                         pdf.set_x(x)
                         pdf.cell(50, 14, " Ab " + moFolgeDatum, border=1)
@@ -1044,9 +1072,18 @@ class MainWindow(QMainWindow):
                             pdf.cell(20, 14, self.comboBoxFolgewoche[wt].currentText(), border=1, align="C")
                         pdf.cell(0, 10, new_x="LMARGIN", new_y="NEXT")
 
+                    # Ggf. Bemerkungen
+                    if self.bemerkungenAufPdf:
+                        pdf.cell(0, 10, new_x="LMARGIN", new_y="NEXT")
+                        pdf.set_font("helvetica", "", 14)
+                        pdf.cell(0, 0, "Bemerkungen:", new_x="LMARGIN", new_y="NEXT")
+                        pdf.set_font("helvetica", "", 14)
+                        pdf.cell(0, 10, self.textEditBemerkungen.toPlainText())    
+
                     # Ggf. nächste Kontrolle
                     if nkDat != "":
                         pdf.cell(0, 10, new_x="LMARGIN", new_y="NEXT")
+                        pdf.set_font("helvetica", "", 14)
                         pdf.cell(0, 14, "Nächste Kontrolle: " + nkDat)
                     pdf.set_y(-30)
                     pdf.set_font("helvetica", "I", 10)
@@ -1065,6 +1102,7 @@ class MainWindow(QMainWindow):
                     mb.exec()
                 self.configIni["Allgemein"]["immerextern"] = str(self.checkBoxExtern.isChecked())
                 self.configIni["Allgemein"]["immerpdf"] = str(self.checkBoxPdfErstellen.isChecked())
+                self.configIni["Allgemein"]["bemerkungenaufpdf"] = str(self.checkBoxBemerkungenAufPdf.isChecked())
                 self.configIni["Benutzer"]["letzter"] = str(self.aktuelleBenuztzernummer)
                 try:
                     with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
