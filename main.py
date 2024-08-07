@@ -26,7 +26,7 @@ from PySide6.QtWidgets import (
 import requests
 
 basedir = os.path.dirname(__file__)
-reInr = r"^\d([.,]\d)*$"
+reInr = r"^\d([.,]\d)*\d?$"
 
 def versionVeraltet(versionAktuell:str, versionVergleich:str):
     """
@@ -495,6 +495,7 @@ class MainWindow(QMainWindow):
             self.dateEditNaechsteKontrolle.setDate(self.naechsteKontrolle)
             self.dateEditNaechsteKontrolle.setDisplayFormat("dd.MM.yyyy")
             self.dateEditNaechsteKontrolle.setCalendarPopup(True)
+            self.dateEditNaechsteKontrolle.setEnabled(self.immerpdf)
             self.dateEditNaechsteKontrolle.userDateChanged.connect(self.dateEditNaechsteKontrolleChanged)
             untdatBenutzerLayoutG.addWidget(labelNaechsteKontrolle, 0, 2, 1, 2)
             untdatBenutzerLayoutG.addWidget(self.dateEditNaechsteKontrolle, 1, 2)
@@ -918,6 +919,7 @@ class MainWindow(QMainWindow):
 
     def checkBoxPdfErstellenClicked(self, checked):
         self.checkBoxBemerkungenAufPdf.setEnabled(checked)
+        self.dateEditNaechsteKontrolle.setEnabled(checked)
 
     def checkBoxBemerkungenAufPdfClicked(self, checked):
         self.bemerkungenAufPdf = checked
@@ -991,10 +993,14 @@ class MainWindow(QMainWindow):
             gd.addZeile("6220", befundzeile)
             wochendosenFolgewoche = []
             wochendosisFolgewoche = 0
+            inrNachkommastellen = len(self.lineEditInr.text().replace(".", ",").split(",")[1])
             if self.pushButtonFolgewocheAktivieren.isChecked():
                 gd.addZeile("6220", "Ab " + moFolgeDatum + ":")
                 gd.addZeile("6220", wochentagszeile)
-                befundzeile = "{:.1f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",")
+                if inrNachkommastellen == 1:
+                    befundzeile = "{:.1f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",")
+                elif inrNachkommastellen == 2:
+                    befundzeile = "{:.2f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",")
                 befundzeile += "     "
                 for wt in range(7):
                     wochendosenFolgewoche.append("{:.2f}".format(float(self.dosen[self.comboBoxFolgewoche[wt].currentIndex()])).replace(".", ","))
@@ -1031,7 +1037,10 @@ class MainWindow(QMainWindow):
                     nkDat = ""
                     if self.naechsteKontrolle != QDate().currentDate():
                         nkDat = self.wochentageLang[self.dateEditNaechsteKontrolle.date().dayOfWeek() - 1] + ", " + "{:>02}".format(str(self.dateEditNaechsteKontrolle.date().day())) + "." + "{:>02}".format(str(self.dateEditNaechsteKontrolle.date().month())) + "." + str(self.dateEditNaechsteKontrolle.date().year())
-                    pdf.cell(0, 14, "Aktueller INR-Wert: " + "{:.1f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",") +  " (" + untdat + ")", align="C", new_x="LMARGIN", new_y="NEXT")
+                    if inrNachkommastellen == 1:
+                        pdf.cell(0, 14, "Aktueller INR-Wert: " + "{:.1f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",") +  " (" + untdat + ")", align="C", new_x="LMARGIN", new_y="NEXT")
+                    elif inrNachkommastellen == 2:
+                        pdf.cell(0, 14, "Aktueller INR-Wert: " + "{:.2f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",") +  " (" + untdat + ")", align="C", new_x="LMARGIN", new_y="NEXT")
                     if self.pushButtonFolgewocheAktivieren.isChecked():
                         x = 10
                     else:
