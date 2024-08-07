@@ -970,7 +970,12 @@ class MainWindow(QMainWindow):
             moFolgeDatum = "{:>02}".format(str(montagDerFolgewoche.day())) + "." + "{:>02}".format(str(montagDerFolgewoche.month())) + "." + str(montagDerFolgewoche.year())
             
             # Befund
-            befundzeile = "{:.1f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",")
+            inrNachkommastellen = len(self.lineEditInr.text().replace(".", ",").split(",")[1])
+            befundzeile = ""
+            if inrNachkommastellen == 1:
+                befundzeile = "{:.1f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",")
+            elif inrNachkommastellen == 2:
+                befundzeile = "{:.2f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",")
             befundzeile += "     "
             wochendosis = 0
             wochendosen = []
@@ -993,7 +998,6 @@ class MainWindow(QMainWindow):
             gd.addZeile("6220", befundzeile)
             wochendosenFolgewoche = []
             wochendosisFolgewoche = 0
-            inrNachkommastellen = len(self.lineEditInr.text().replace(".", ",").split(",")[1])
             if self.pushButtonFolgewocheAktivieren.isChecked():
                 gd.addZeile("6220", "Ab " + moFolgeDatum + ":")
                 gd.addZeile("6220", wochentagszeile)
