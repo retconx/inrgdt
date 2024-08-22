@@ -95,7 +95,7 @@ class EinstellungenAllgemein(QDialog):
         self.lineEditArchivierungsverzeichnis = QLineEdit(self.archivierungspfad)
         self.lineEditArchivierungsverzeichnis.setFont(self.fontNormal)
         self.lineEditArchivierungsverzeichnis.setToolTip(self.archivierungspfad)
-        buttonDurchsuchenArchivierungsverzeichnis= QPushButton("Durchsuchen")
+        buttonDurchsuchenArchivierungsverzeichnis= QPushButton("...")
         buttonDurchsuchenArchivierungsverzeichnis.setFont(self.fontNormal)
         buttonDurchsuchenArchivierungsverzeichnis.clicked.connect(self.durchsuchenArchivierungsverzeichnis)
         self.checkBoxVorherigeDokuLaden = QCheckBox("Vorherige Dokumentation beim Programmstart laden")
@@ -120,7 +120,6 @@ class EinstellungenAllgemein(QDialog):
             self.lineEditUpdaterPfad.setStyleSheet("background:rgb(255,200,200)")
         self.pushButtonUpdaterPfad = QPushButton("...")
         self.pushButtonUpdaterPfad.setFont(self.fontNormal)
-        self.pushButtonUpdaterPfad.setToolTip("Pfad zum GDT-Tools Updater auswählen")
         self.pushButtonUpdaterPfad.clicked.connect(self.pushButtonUpdaterPfadClicked)
         self.checkBoxAutoUpdate = QCheckBox("Automatisch auf Update prüfen")
         self.checkBoxAutoUpdate.setFont(self.fontNormal)
@@ -153,7 +152,8 @@ class EinstellungenAllgemein(QDialog):
         fd.setLabelText(QFileDialog.DialogLabel.Reject, "Abbrechen")
         if fd.exec() == 1:
             self.archivierungspfad = fd.directory()
-            self.lineEditArchivierungsverzeichnis.setText(fd.directory().path())
+            self.lineEditArchivierungsverzeichnis.setText(os.path.abspath(fd.directory().path()))
+            self.lineEditArchivierungsverzeichnis.setToolTip(os.path.abspath(fd.directory().path()))
 
     def pushButtonUpdaterPfadClicked(self):
         fd = QFileDialog(self)
@@ -169,8 +169,8 @@ class EinstellungenAllgemein(QDialog):
         fd.setLabelText(QFileDialog.DialogLabel.Accept, "Auswählen")
         fd.setLabelText(QFileDialog.DialogLabel.Reject, "Abbrechen")
         if fd.exec() == 1:
-            self.lineEditUpdaterPfad.setText(fd.selectedFiles()[0])
-            self.lineEditUpdaterPfad.setToolTip(fd.selectedFiles()[0])
+            self.lineEditUpdaterPfad.setText(os.path.abspath(fd.selectedFiles()[0]))
+            self.lineEditUpdaterPfad.setToolTip(os.path.abspath(fd.selectedFiles()[0]))
             self.lineEditUpdaterPfad.setStyleSheet("background:rgb(255,255,255)")
     
     def accept(self):
