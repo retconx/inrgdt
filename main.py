@@ -970,7 +970,9 @@ class MainWindow(QMainWindow):
             moFolgeDatum = "{:>02}".format(str(montagDerFolgewoche.day())) + "." + "{:>02}".format(str(montagDerFolgewoche.month())) + "." + str(montagDerFolgewoche.year())
             
             # Befund
-            inrNachkommastellen = len(self.lineEditInr.text().replace(".", ",").split(",")[1])
+            inrNachkommastellen = 0
+            if len(self.lineEditInr.text().replace(".", ",").split(",")) > 1:
+                inrNachkommastellen = len(self.lineEditInr.text().replace(".", ",").split(",")[1])
             befundzeile = ""
             if inrNachkommastellen == 1:
                 befundzeile = "{:.1f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",")
