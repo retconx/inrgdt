@@ -974,7 +974,7 @@ class MainWindow(QMainWindow):
             if len(self.lineEditInr.text().replace(".", ",").split(",")) > 1:
                 inrNachkommastellen = len(self.lineEditInr.text().replace(".", ",").split(",")[1])
             befundzeile = ""
-            if inrNachkommastellen == 1:
+            if inrNachkommastellen <= 1:
                 befundzeile = "{:.1f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",")
             elif inrNachkommastellen == 2:
                 befundzeile = "{:.2f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",")
