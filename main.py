@@ -309,6 +309,7 @@ class MainWindow(QMainWindow):
         self.fontBoldGross.setBold(True)
         self.fontBoldGross.setPixelSize(16)
         self.fontGross = QFont()
+        self.fontGross.setBold(False)
         self.fontGross.setPixelSize(16)
         self.fontGrossStrikeOut = QFont()
         self.fontGrossStrikeOut.setPixelSize(16)
@@ -368,24 +369,44 @@ class MainWindow(QMainWindow):
             self.pushButtonArchivierungLaden.setFont(self.fontGross)
             self.pushButtonArchivierungLaden.setEnabled(False)
             self.pushButtonArchivierungLaden.clicked.connect(self.pushButtonArchivierungLadenClicked)
-            labelInr = QLabel("INR")
-            labelInr.setFont(self.fontGross)
-            self.lineEditInr = QLineEdit()
-            self.lineEditInr.setFont(self.fontGross)
-            self.lineEditInr.textEdited.connect(self.lineEditInrEdited)
-            self.checkBoxExtern = QCheckBox("Extern bestimmter Wert")
-            self.checkBoxExtern.setFont(self.fontGross)
-            self.checkBoxExtern.setChecked(self.immerextern)
             kopfLayoutG.addWidget(labelName, 0, 0)
             kopfLayoutG.addWidget(labelPatId, 0, 1)
             kopfLayoutG.addWidget(labelGeburtsdatum, 0, 2)
             kopfLayoutG.addWidget(labelDokumentationVom, 1, 0)
             kopfLayoutG.addWidget(self.labelArchivdatum, 1, 1)
             kopfLayoutG.addWidget(self.pushButtonArchivierungLaden, 1, 2, alignment=Qt.AlignmentFlag.AlignLeft)
-            inrLayoutH.addWidget(labelInr)
-            inrLayoutH.addWidget(self.lineEditInr)
-            inrLayoutH.addWidget(self.checkBoxExtern)
-            
+            # GroupBox INR-Messwert
+            groupBoxInrMesswert = QGroupBox("INR-Messwert")
+            groupBoxInrMesswert.setFont(self.fontBoldGross)
+            groupBoxInrMesswertLayout = QHBoxLayout()
+            self.lineEditInr = QLineEdit()
+            self.lineEditInr.setFont(self.fontGross)
+            self.lineEditInr.textEdited.connect(self.lineEditInrEdited)
+            self.checkBoxExtern = QCheckBox("Extern bestimmter Wert")
+            self.checkBoxExtern.setFont(self.fontGross)
+            self.checkBoxExtern.setChecked(self.immerextern)
+            groupBoxInrMesswertLayout.addWidget(self.lineEditInr)
+            groupBoxInrMesswertLayout.addWidget(self.checkBoxExtern)
+            groupBoxInrMesswert.setLayout(groupBoxInrMesswertLayout)
+            # GroupBox INR-Zielbereich
+            groupBoxInrZielbereich = QGroupBox("INR-Zielbereich")
+            groupBoxInrZielbereich.setFont(self.fontBoldGross)
+            groupBoxInrZielbereichLayout = QHBoxLayout()
+            self.lineEditInrzielVon = QLineEdit()
+            self.lineEditInrzielVon.setFont(self.fontGross)
+            self.lineEditInrzielVon.textEdited.connect(lambda text="", lineEdit=self.lineEditInrzielVon: self.lineEditInrzielEdited(text, lineEdit))
+            labelBis = QLabel("-")
+            labelBis.setFont(self.fontBoldGross)
+            self.lineEditInrzielBis = QLineEdit()
+            self.lineEditInrzielBis.setFont(self.fontGross)
+            self.lineEditInrzielBis.textEdited.connect(lambda text="", lineEdit=self.lineEditInrzielBis: self.lineEditInrzielEdited(text, lineEdit))
+            groupBoxInrZielbereich.setLayout(groupBoxInrZielbereichLayout)
+            groupBoxInrZielbereichLayout.addWidget(self.lineEditInrzielVon)
+            groupBoxInrZielbereichLayout.addWidget(labelBis)
+            groupBoxInrZielbereichLayout.addWidget(self.lineEditInrzielBis)
+            inrLayoutH.addWidget(groupBoxInrMesswert)
+            inrLayoutH.addWidget(groupBoxInrZielbereich)
+
             inrLayoutG = QGridLayout()
             labelWochentage = []
             self.pushButtonDosen = []
@@ -645,8 +666,20 @@ class MainWindow(QMainWindow):
             mb.button(QMessageBox.StandardButton.No).setText("Nein")
             if mb.exec() == QMessageBox.StandardButton.Yes:
                 os.execl(sys.executable, __file__, *sys.argv)  
-                
-        if doku != "" and len(doku) != 50:
+        
+        dokuLesbar = True
+        zielInrVon = ""
+        zielInrBis = ""
+        if doku == "" or len(doku) < 50:
+            dokuLesbar = False
+        elif len(doku) > 50:
+            zielbereich = doku.split("::")[len(doku.split("::")) - 1]
+            if not "-" in zielbereich and len(zielbereich.split("-")) != 2:
+                dokuLesbar = False
+            else:
+                zielInrVon = zielbereich.split("-")[0]
+                zielInrBis = zielbereich.split("-")[1]
+        if not dokuLesbar:
             mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von InrGDT", "Die vorherige Dokumentation von ist nicht lesbar.", QMessageBox.StandardButton.Ok)
             mb.exec()
             doku = ""
@@ -670,6 +703,9 @@ class MainWindow(QMainWindow):
             if len(nichtGefundeneArchivdosen) > 0:
                 mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von InrGDT", "Nicht alle archivierten Tagesdosen können wegen fehlender Dosisbuttons wiederhergestellt werden:\n" + "\n".join(nichtGefundeneArchivdosen), QMessageBox.StandardButton.Ok)
                 mb.exec()
+            # Zielbereich
+            self.lineEditInrzielVon.setText(zielInrVon)
+            self.lineEditInrzielBis.setText(zielInrBis)
 
     def pushButtonArchivierungLadenClicked(self):
         self.mitVorherigerUntersuchungAusfuellen()
@@ -708,7 +744,7 @@ class MainWindow(QMainWindow):
             programmverzeichnis = sex[:sex.rfind("inrgdt.exe")]
         elif "darwin" in sys.platform:
             programmverzeichnis = sex[:sex.find("InrGDT.app")]
-        elif "win32" in sys.platform:
+        elif "linux" in sys.platform:
             programmverzeichnis = sex[:sex.rfind("inrgdt")]
         logger.logger.info("Programmverzeichnis: " + programmverzeichnis)
         try:
@@ -871,6 +907,14 @@ class MainWindow(QMainWindow):
             self.lineEditInr.setStyleSheet("background:rgb(255,255,255)")
             self.pushButtonSenden.setEnabled(True)
 
+    def lineEditInrzielEdited(self, text, lineEdit):
+        if re.match(reInr, lineEdit.text()) == None:
+            lineEdit.setStyleSheet("background:rgb(255,200,200)")
+            self.pushButtonSenden.setEnabled(False)
+        elif self.addOnsFreigeschaltet:
+            lineEdit.setStyleSheet("background:rgb(255,255,255)")
+            self.pushButtonSenden.setEnabled(True)
+
     def pushButtonDosisClicked(self, checked, dosiszeile, wochentagspalte):
         if self.labelArchivdatum.text() != "--.--.----":
             self.labelArchivdatum.setFont(self.fontGrossStrikeOut)
@@ -1026,6 +1070,18 @@ class MainWindow(QMainWindow):
                 mb.button(QMessageBox.StandardButton.No).setText("Nein")
                 if mb.exec() == QMessageBox.StandardButton.No:
                         datenSendenOk = False
+            if datenSendenOk and self.dateEditUntersuchungsdatum.date().daysTo(self.dateEditNaechsteKontrolle.date()) < 0:
+                mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von InrGDT", "Das Datum für die nächste Kontrolle muss nach dem Untersuchungsdatum liegen.", QMessageBox.StandardButton.Ok)
+                mb.exec()
+                datenSendenOk = False
+                self.dateEditNaechsteKontrolle.selectAll()
+            zielbereichEingetragen = self.lineEditInrzielVon.text() != "" and self.lineEditInrzielBis.text() != ""
+            if datenSendenOk and zielbereichEingetragen and float(self.lineEditInrzielVon.text().replace(",", ".")) >= float(self.lineEditInrzielBis.text().replace(",", ".")):
+                mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von InrGDT", "Die obere INR-Zielbereichsgrenze muss größer als die untere sein.", QMessageBox.StandardButton.Ok)
+                mb.exec()
+                datenSendenOk = False
+                self.lineEditInrzielVon.setFocus()
+                self.lineEditInrzielVon.selectAll()
             if datenSendenOk:
                 # PDF erzeugen
                 if self.checkBoxPdfErstellen.isChecked():
@@ -1043,10 +1099,16 @@ class MainWindow(QMainWindow):
                     nkDat = ""
                     if self.naechsteKontrolle != QDate().currentDate():
                         nkDat = self.wochentageLang[self.dateEditNaechsteKontrolle.date().dayOfWeek() - 1] + ", " + "{:>02}".format(str(self.dateEditNaechsteKontrolle.date().day())) + "." + "{:>02}".format(str(self.dateEditNaechsteKontrolle.date().month())) + "." + str(self.dateEditNaechsteKontrolle.date().year())
-                    if inrNachkommastellen == 1:
-                        pdf.cell(0, 14, "Aktueller INR-Wert: " + "{:.1f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",") +  " (" + untdat + ")", align="C", new_x="LMARGIN", new_y="NEXT")
+                    if inrNachkommastellen <= 1:
+                        pdf.cell(0, 5, "Aktueller INR-Wert: " + "{:.1f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",") +  " (" + untdat + ")", align="C", new_x="LMARGIN", new_y="NEXT")
                     elif inrNachkommastellen == 2:
-                        pdf.cell(0, 14, "Aktueller INR-Wert: " + "{:.2f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",") +  " (" + untdat + ")", align="C", new_x="LMARGIN", new_y="NEXT")
+                        pdf.cell(0, 5, "Aktueller INR-Wert: " + "{:.2f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",") +  " (" + untdat + ")", align="C", new_x="LMARGIN", new_y="NEXT")
+                    # Ggf. Zielbereich
+                    if zielbereichEingetragen:
+                        pdf.set_font("helvetica", "", 12)
+                        pdf.leerzeile(2)
+                        pdf.cell(0, 4, "INR-Zielbereich: " + self.lineEditInrzielVon.text().replace(".", ",") + " - " + self.lineEditInrzielBis.text().replace(".", ","), align="C", new_x="LMARGIN", new_y="NEXT")
+                    pdf.leerzeile(10)
                     if self.pushButtonFolgewocheAktivieren.isChecked():
                         x = 10
                     else:
@@ -1088,7 +1150,7 @@ class MainWindow(QMainWindow):
                         pdf.cell(0, 10, new_x="LMARGIN", new_y="NEXT")
 
                     # Ggf. Bemerkungen
-                    if self.bemerkungenAufPdf:
+                    if self.bemerkungenAufPdf and self.textEditBemerkungen.toPlainText() != "":
                         pdf.cell(0, 10, new_x="LMARGIN", new_y="NEXT")
                         pdf.set_font("helvetica", "", 14)
                         pdf.cell(0, 0, "Bemerkungen:", new_x="LMARGIN", new_y="NEXT")
@@ -1131,6 +1193,9 @@ class MainWindow(QMainWindow):
                         for wt in range(7):
                             folgewochendosen.append("{:.2f}".format(float(self.dosen[self.comboBoxFolgewoche[wt].currentIndex()])).replace(".", ","))
                         zusammenfassung = untersuchungsdatum + "::" + "::".join(folgewochendosen)
+                    # Ggf. Zielbereich
+                    if zielbereichEingetragen:
+                        zusammenfassung += "::" + self.lineEditInrzielVon.text().replace(".", ",") + "-" + self.lineEditInrzielBis.text().replace(".", ",")
                     if self.archivierungspfad != "":
                         if os.path.exists(self.archivierungspfad):
                             speicherdatum = str(self.dateEditUntersuchungsdatum.date().year()) + "{:>02}".format(str(self.dateEditUntersuchungsdatum.date().month())) + "{:>02}".format(str(self.dateEditUntersuchungsdatum.date().day()))

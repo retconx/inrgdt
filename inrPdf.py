@@ -10,3 +10,6 @@ class geriasspdf(FPDF):
         self.set_font("helvetica", "B", 20)
         self.cell(0, 10, "Marcumar-/ Phenprocoumon-Dosierungsplan", align="C", new_x="LMARGIN", new_y="NEXT")
         #self.cell(0,10, new_x="LMARGIN", new_y="NEXT")
+    
+    def leerzeile(self, mm:int):
+        self.cell(0, mm, "", new_x="LMARGIN", new_y="NEXT")
