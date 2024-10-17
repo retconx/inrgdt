@@ -332,7 +332,8 @@ class MainWindow(QMainWindow):
             logger.logger.info("PatientIn " + self.name + " (ID: " + self.patId + ") geladen")
             ## Nur mit Lizenz
             if self.pseudoLizenzId != "":
-                self.patid = self.pseudoLizenzId
+                self.patId = self.pseudoLizenzId
+                print(self.patId)
                 logger.logger.info("PatId wegen Pseudolizenz auf " + self.pseudoLizenzId + " gesetzt")
             ## /Nur mit Lizenz
             self.geburtsdatum = str(gd.getInhalt("3103"))[0:2] + "." + str(gd.getInhalt("3103"))[2:4] + "." + str(gd.getInhalt("3103"))[4:8]
