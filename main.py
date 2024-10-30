@@ -77,6 +77,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
+        self.maxBenutzerzahl = 20
 
         # config.ini lesen
         ersterStart = False
@@ -839,7 +840,7 @@ class MainWindow(QMainWindow):
         if de.exec() == 1:
             namen = []
             kuerzel = []
-            for i in range(5):
+            for i in range(self.maxBenutzerzahl):
                 if de.lineEditNamen[i].text() != "":
                     namen.append(de.lineEditNamen[i].text())
                     kuerzel.append(de.lineEditKuerzel[i].text())
