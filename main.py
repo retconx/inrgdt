@@ -1,11 +1,11 @@
 import sys, configparser, os, datetime, shutil, logger, re, atexit, subprocess
-import gdt, gdtzeile
+import gdt, gdtzeile, farbe
 ## Nur mit Lizenz
 import gdttoolsL
 ## /Nur mit Lizenz
 import dialogUeberInrGdt, dialogEinstellungenAllgemein, dialogEinstellungenGdt, dialogEinstellungenBenutzer, dialogEinstellungenLanrLizenzschluessel, dialogEinstellungenImportExport, dialogEinstellungenDosierung, inrPdf, dialogEula
 from PySide6.QtCore import Qt, QDate, QTime, QTranslator, QLibraryInfo
-from PySide6.QtGui import QFont, QAction, QIcon, QDesktopServices
+from PySide6.QtGui import QFont, QAction, QIcon, QDesktopServices, QPalette
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -78,6 +78,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.maxBenutzerzahl = 20
+        self.standardpalette = self.palette()
 
         # config.ini lesen
         ersterStart = False
@@ -334,7 +335,6 @@ class MainWindow(QMainWindow):
             ## Nur mit Lizenz
             if self.pseudoLizenzId != "":
                 self.patId = self.pseudoLizenzId
-                print(self.patId)
                 logger.logger.info("PatId wegen Pseudolizenz auf " + self.pseudoLizenzId + " gesetzt")
             ## /Nur mit Lizenz
             self.geburtsdatum = str(gd.getInhalt("3103"))[0:2] + "." + str(gd.getInhalt("3103"))[2:4] + "." + str(gd.getInhalt("3103"))[4:8]
@@ -530,7 +530,8 @@ class MainWindow(QMainWindow):
 
             # Senden-Button
             self.pushButtonSenden = QPushButton("Daten senden")
-            self.pushButtonSenden.setStyleSheet("background:rgb(200,255,200);border-color:rgb(0,0,0);font-size:18px")
+            self.pushButtonSenden.setFont(self.fontBoldGross)
+            self.pushButtonSenden.setAutoFillBackground(True)
             self.pushButtonSenden.setFixedHeight(60)
             self.pushButtonSenden.clicked.connect(self.pushButtonSendenClicked)
 
@@ -903,18 +904,18 @@ class MainWindow(QMainWindow):
 
     def lineEditInrEdited(self):
         if re.match(reInr, self.lineEditInr.text()) == None:
-            self.lineEditInr.setStyleSheet("background:rgb(255,200,200)")
+            self.lineEditInr.setPalette(farbe.getTextPalette(farbe.farben.ROT, self.palette()))
             self.pushButtonSenden.setEnabled(False)
         elif self.addOnsFreigeschaltet:
-            self.lineEditInr.setStyleSheet("background:rgb(255,255,255)")
+            self.lineEditInr.setPalette(farbe.getTextPalette(farbe.farben.NORMAL, self.palette()))
             self.pushButtonSenden.setEnabled(True)
 
     def lineEditInrzielEdited(self, text, lineEdit):
-        if re.match(reInr, lineEdit.text()) == None:
-            lineEdit.setStyleSheet("background:rgb(255,200,200)")
+        if lineEdit.text() != "" and re.match(reInr, lineEdit.text()) == None:
+            lineEdit.setPalette(farbe.getTextPalette(farbe.farben.ROT, self.palette()))
             self.pushButtonSenden.setEnabled(False)
         elif self.addOnsFreigeschaltet:
-            lineEdit.setStyleSheet("background:rgb(255,255,255)")
+            lineEdit.setPalette(farbe.getTextPalette(farbe.farben.NORMAL, self.palette()))
             self.pushButtonSenden.setEnabled(True)
 
     def pushButtonDosisClicked(self, checked, dosiszeile, wochentagspalte):
