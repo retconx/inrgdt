@@ -356,7 +356,7 @@ class MainWindow(QMainWindow):
             kopfLayoutG = QGridLayout()
             inrLayoutH = QHBoxLayout()
             self.labelPseudolizenz = QLabel("+++ Pseudolizenz für Test-/ Präsentationszwecke +++")
-            self.labelPseudolizenz.setStyleSheet("color:rgb(200,0,0);font-style:italic")
+            self.labelPseudolizenz.setStyleSheet("color:rgb(255,50,50)")
             labelName = QLabel("Name: " + self.name)
             labelName.setFont(self.fontGross)
             labelPatId = QLabel("ID: " + self.patId)
@@ -533,6 +533,7 @@ class MainWindow(QMainWindow):
             self.pushButtonSenden.setFont(self.fontBoldGross)
             self.pushButtonSenden.setAutoFillBackground(True)
             self.pushButtonSenden.setFixedHeight(60)
+            self.pushButtonSenden.setEnabled(False)
             self.pushButtonSenden.clicked.connect(self.pushButtonSendenClicked)
 
             ## Nur mit Lizenz
@@ -554,7 +555,7 @@ class MainWindow(QMainWindow):
                 gueltigeLizenztage = gdttoolsL.GdtToolsLizenzschluessel.nochTageGueltig(self.lizenzschluessel)
                 if gueltigeLizenztage  > 0 and gueltigeLizenztage <= 30:
                     labelLizenzLaeuftAus = QLabel("Die genutzte Lizenz ist noch " + str(gueltigeLizenztage) + " Tage gültig.")
-                    labelLizenzLaeuftAus.setStyleSheet("color:rgb(200,0,0)")
+                    labelLizenzLaeuftAus.setStyleSheet("color:rgb(255,50,50)")
                     mainLayoutV.addWidget(labelLizenzLaeuftAus, alignment=Qt.AlignmentFlag.AlignCenter)
             else:
                 self.pushButtonSenden.setEnabled(False)
@@ -904,19 +905,20 @@ class MainWindow(QMainWindow):
 
     def lineEditInrEdited(self):
         if re.match(reInr, self.lineEditInr.text()) == None:
-            self.lineEditInr.setPalette(farbe.getTextPalette(farbe.farben.ROT, self.palette()))
+            self.lineEditInr.setPalette(farbe.getBasePalette(farbe.farben.ROT, self.palette()))
             self.pushButtonSenden.setEnabled(False)
         elif self.addOnsFreigeschaltet:
-            self.lineEditInr.setPalette(farbe.getTextPalette(farbe.farben.NORMAL, self.palette()))
+            self.lineEditInr.setPalette(farbe.getBasePalette(farbe.farben.NORMAL, self.palette()))
             self.pushButtonSenden.setEnabled(True)
 
     def lineEditInrzielEdited(self, text, lineEdit):
         if lineEdit.text() != "" and re.match(reInr, lineEdit.text()) == None:
-            lineEdit.setPalette(farbe.getTextPalette(farbe.farben.ROT, self.palette()))
+            lineEdit.setPalette(farbe.getBasePalette(farbe.farben.ROT, self.palette()))
             self.pushButtonSenden.setEnabled(False)
         elif self.addOnsFreigeschaltet:
-            lineEdit.setPalette(farbe.getTextPalette(farbe.farben.NORMAL, self.palette()))
-            self.pushButtonSenden.setEnabled(True)
+            lineEdit.setPalette(farbe.getBasePalette(farbe.farben.NORMAL, self.palette()))
+            if re.match(reInr, self.lineEditInr.text()) != None:
+                self.pushButtonSenden.setEnabled(True)
 
     def pushButtonDosisClicked(self, checked, dosiszeile, wochentagspalte):
         if self.labelArchivdatum.text() != "--.--.----":
@@ -1078,8 +1080,8 @@ class MainWindow(QMainWindow):
                 mb.exec()
                 datenSendenOk = False
                 self.dateEditNaechsteKontrolle.selectAll()
-            zielbereichEingetragen = self.lineEditInrzielVon.text() != "" and self.lineEditInrzielBis.text() != ""
-            if datenSendenOk and zielbereichEingetragen and float(self.lineEditInrzielVon.text().replace(",", ".")) >= float(self.lineEditInrzielBis.text().replace(",", ".")):
+            zielbereichEingetragen = self.lineEditInrzielVon.text() != "" and self.lineEditInrzielBis.text() != "" and float(self.lineEditInrzielVon.text().replace(",", ".")) < float(self.lineEditInrzielBis.text().replace(",", "."))
+            if datenSendenOk and not zielbereichEingetragen:
                 mb = QMessageBox(QMessageBox.Icon.Information, "Hinweis von InrGDT", "Die obere INR-Zielbereichsgrenze muss größer als die untere sein.", QMessageBox.StandardButton.Ok)
                 mb.exec()
                 datenSendenOk = False

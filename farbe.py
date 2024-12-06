@@ -7,7 +7,7 @@ class farben(Enum):
     ROT = {"hell" : (255, 240, 240), "dunkel" : (100, 50, 50)}
 
 @staticmethod
-def getTextPalette(farbe:farben, aktuellePalette:QPalette):
+def getBasePalette(farbe:farben, aktuellePalette:QPalette):
     if farbe == farben.NORMAL:
         return QPalette()
     modus = "hell"
