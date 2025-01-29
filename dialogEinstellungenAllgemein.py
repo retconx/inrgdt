@@ -36,6 +36,7 @@ class EinstellungenAllgemein(QDialog):
         self.leerzeichenNach = configIni["Allgemein"]["lznach"]
         self.autoupdate = configIni["Allgemein"]["autoupdate"] == "True"
         self.updaterpfad = configIni["Allgemein"]["updaterpfad"]
+        self.halbStatt05 = configIni["Allgemein"]["halbstatt05"] == "True"
 
         self.setWindowTitle("Allgemeine Einstellungen")
         self.buttonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
@@ -75,6 +76,16 @@ class EinstellungenAllgemein(QDialog):
         groupboxLayoutWochentagsUebertragungG.addWidget(labelWochentagLegende, 3, 0, 1, 4)
         groupBoxWochentagsUebertragung.setLayout(groupboxLayoutWochentagsUebertragungG)
 
+        # Darstellung in Karteikarte
+        groupboxLayoutDarstellungKarteikarteG = QGridLayout()
+        groupboxDarstellungKarteikarte = QGroupBox("Darstellung in Karteikarte")
+        groupboxDarstellungKarteikarte.setFont(self.fontBold)
+        self.checkboxHalbStatt05 = QCheckBox("\u00bd statt 0,25, \u00bc  statt 0,50, \u00be statt 0,75 ohne Wochentagsanzeige (Mo Di Mi...\n(nur mit Zeichensatz ISO8859-1 möglich)")
+        self.checkboxHalbStatt05.setFont(self.fontNormal)
+        self.checkboxHalbStatt05.setChecked(self.halbStatt05)
+        groupboxLayoutDarstellungKarteikarteG.addWidget(self.checkboxHalbStatt05)
+        groupboxDarstellungKarteikarte.setLayout(groupboxLayoutDarstellungKarteikarteG)
+
         # Groupbox Einrichtung
         groupboxLayoutEinrichtungG = QGridLayout()
         groupboxEinrichtung = QGroupBox("Einrichtung/Praxis")
@@ -86,6 +97,7 @@ class EinstellungenAllgemein(QDialog):
         groupboxLayoutEinrichtungG.addWidget(labelEinrichtungsname, 0, 0)
         groupboxLayoutEinrichtungG.addWidget(self.lineEditEinrichtungsname, 0, 1)
         groupboxEinrichtung.setLayout(groupboxLayoutEinrichtungG)
+
         # Groupbox Archivierung
         groupboxLayoutArchivierungG = QGridLayout()
         groupboxArchivierung = QGroupBox("Archivierung")
@@ -132,6 +144,7 @@ class EinstellungenAllgemein(QDialog):
         groupBoxUpdates.setLayout(groupBoxUpdatesLayoutG)
 
         dialogLayoutV.addWidget(groupBoxWochentagsUebertragung)
+        dialogLayoutV.addWidget(groupboxDarstellungKarteikarte)
         dialogLayoutV.addWidget(groupboxEinrichtung)
         dialogLayoutV.addWidget(groupboxArchivierung)
         dialogLayoutV.addWidget(groupBoxUpdates)

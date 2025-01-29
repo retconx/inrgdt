@@ -166,6 +166,10 @@ class MainWindow(QMainWindow):
         self.bemerkungenAufPdf = False
         if self.configIni.has_option("Allgemein", "bemerkungenaufpdf"):
             self.bemerkungenAufPdf = self.configIni["Allgemein"]["bemerkungenaufpdf"] == "True"
+        # 1.9.0
+        self.halbstatt05 = False
+        if self.configIni.has_option("Allgemein", "halbstatt05"):
+            self.halbstatt05 = self.configIni["Allgemein"]["halbstatt05"] == "True"
         ## /Nachträglich hinzufefügte Options
 
         z = self.configIni["GDT"]["zeichensatz"]
@@ -253,6 +257,9 @@ class MainWindow(QMainWindow):
                 # 1.5.0 -> 1.6.0 ["Allgemein"]["bemerkungenaufpdf"] hinzufügen
                 if not self.configIni.has_option("Allgemein", "bemerkungenaufpdf"):
                     self.configIni["Allgemein"]["bemerkungenaufpdf"] = "False"
+                # 1.8.2 -> 1.9.0 ["Allgemein"]["halbstatt05"] hinzufügen
+                if not self.configIni.has_option("Allgemein", "halbstatt05"):
+                    self.configIni["Allgemein"]["halbstatt05"] = "False"
                 ## /config.ini aktualisieren
 
                 with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
@@ -807,6 +814,7 @@ class MainWindow(QMainWindow):
             self.configIni["Allgemein"]["vorherigedokuladen"] = str(de.checkBoxVorherigeDokuLaden.isChecked())
             self.configIni["Allgemein"]["updaterpfad"] = de.lineEditUpdaterPfad.text()
             self.configIni["Allgemein"]["autoupdate"] = str(de.checkBoxAutoUpdate.isChecked())
+            self.configIni["Allgemein"]["halbstatt05"] = str(de.checkboxHalbStatt05.isChecked())
             with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
                 self.configIni.write(configfile)
             if neustartfrage:
@@ -1006,8 +1014,9 @@ class MainWindow(QMainWindow):
                 for i in range(int(self.lzNach)):
                     lzNach += " "
                 wochentagszeile = "INR"
-                for wt in self.wochentage:
-                    wochentagszeile += lzVor + wt + lzNach
+                if not self.halbstatt05:
+                    for wt in self.wochentage:
+                        wochentagszeile += lzVor + wt + lzNach
                 gd.addZeile("6220", wochentagszeile)
             
             untWt = self.untersuchungsdatum.dayOfWeek() # Montag = 1, Sonntag = 7
@@ -1039,11 +1048,17 @@ class MainWindow(QMainWindow):
                 if len(wochendosen) != wt + 1:
                     nichtAlleWochentage = True
                     wochendosen.append("0,00")
-            befundzeile += "  -  ".join(wochendosen)
+            wochendosenFormatiert = wochendosen.copy()
+            wochendosisFormatiert = "{:.2f}".format(wochendosis).replace(".", ",")
+            if self.halbstatt05:
+                for i in range(len(wochendosen)):
+                    wochendosenFormatiert[i] = wochendosen[i].replace(",25", "\u00bc").replace(",50", "\u00bd").replace(",75", "\u00be").replace("0", "").replace(",", "")
+                wochendosisFormatiert = wochendosisFormatiert.replace(",25", "\u00bc").replace(",50", "\u00bd").replace(",75", "\u00be").replace("0", "").replace(",", "")
+            befundzeile += "  -  ".join(wochendosenFormatiert)
             externBenutzer = self.benutzerkuerzelListe[self.aktuelleBenuztzernummer]
             if self.checkBoxExtern.isChecked():
                 externBenutzer = "extern/" + externBenutzer
-            befundzeile += "  WD: " + "{:.2f}".format(wochendosis).replace(".", ",") + " (" + externBenutzer + ")"
+            befundzeile += "  WD: " + wochendosisFormatiert + " (" + externBenutzer + ")"
             if self.pushButtonFolgewocheAktivieren.isChecked():
                 gd.addZeile("6220", vonDatum + " - " + bisDatum + ":")
             gd.addZeile("6220", befundzeile)
