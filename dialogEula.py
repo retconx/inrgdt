@@ -20,7 +20,7 @@ class Eula(QDialog):
         self.buttonBox.accepted.connect(self.accept)
 
         dialogLayoutV = QVBoxLayout()
-        labelAktualisiert = QLabel("SignoGDT wurde erfolgreich auf Version " + neueVersion + " aktualisiert.")
+        labelAktualisiert = QLabel("InrGDT wurde erfolgreich auf Version " + neueVersion + " aktualisiert.")
         labelAktualisiert.setStyleSheet("font-weight:bold")
         response = requests.get("https://api.github.com/repos/retconx/inrgdt/releases/latest")
         body = response.json()["body"]
