@@ -1,4 +1,4 @@
-import sys, configparser, os, datetime, shutil, logger, re, atexit, subprocess
+import sys, configparser, os, datetime, shutil, logger, re, atexit, subprocess, math
 import gdt, gdtzeile, farbe
 ## Nur mit Lizenz
 import gdttoolsL
@@ -126,7 +126,6 @@ class MainWindow(QMainWindow):
         self.benutzerkuerzelListe = self.configIni["Benutzer"]["kuerzel"].split("::")
         self.aktuelleBenuztzernummer = int(self.configIni["Benutzer"]["letzter"])
         self.dosen = self.configIni["Marcumar"]["dosen"].split("::")
-
         ## Nachträglich hinzufefügte Options
         # 1.1.0
         self.archivierungspfad = ""
@@ -167,9 +166,13 @@ class MainWindow(QMainWindow):
         if self.configIni.has_option("Allgemein", "bemerkungenaufpdf"):
             self.bemerkungenAufPdf = self.configIni["Allgemein"]["bemerkungenaufpdf"] == "True"
         # 1.9.0
-        self.halbstatt05 = False
+        self.halbStatt05 = False
         if self.configIni.has_option("Allgemein", "halbstatt05"):
-            self.halbstatt05 = self.configIni["Allgemein"]["halbstatt05"] == "True"
+            self.halbStatt05 = self.configIni["Allgemein"]["halbstatt05"] == "True"
+        # 1.10.0
+        self.pdfMehrereWochen = False
+        if self.configIni.has_option("Allgemein", "pdfmehrerewochen"):
+            self.pdfMehrereWochen = self.configIni["Allgemein"]["pdfmehrerewochen"] == "True"
         ## /Nachträglich hinzufefügte Options
 
         z = self.configIni["GDT"]["zeichensatz"]
@@ -260,6 +263,9 @@ class MainWindow(QMainWindow):
                 # 1.8.2 -> 1.9.0 ["Allgemein"]["halbstatt05"] hinzufügen
                 if not self.configIni.has_option("Allgemein", "halbstatt05"):
                     self.configIni["Allgemein"]["halbstatt05"] = "False"
+                # 1.9.2 -> 1.10.0
+                if not self.configIni.has_option("Allgemein", "pdfmehrerewochen"):
+                    self.configIni["Allgemein"]["pdfmehrerewochen"] = "False"
                 ## /config.ini aktualisieren
 
                 with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
@@ -815,6 +821,7 @@ class MainWindow(QMainWindow):
             self.configIni["Allgemein"]["updaterpfad"] = de.lineEditUpdaterPfad.text()
             self.configIni["Allgemein"]["autoupdate"] = str(de.checkBoxAutoUpdate.isChecked())
             self.configIni["Allgemein"]["halbstatt05"] = str(de.checkboxHalbStatt05.isChecked())
+            self.configIni["Allgemein"]["pdfmehrerewochen"] = str(de.checkBoxWochenanzeigeBisKontrolle.isChecked())
             with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
                 self.configIni.write(configfile)
             if neustartfrage:
@@ -971,7 +978,7 @@ class MainWindow(QMainWindow):
     def comboBoxBenutzerIndexChanged(self, index):
         self.aktuelleBenuztzernummer = index
     
-    def dateEditNaechsteKontrolleChanged(self, datum):
+    def dateEditNaechsteKontrolleChanged(self, datum:QDate):
         self.naechsteKontrolle = datum
 
     def checkBoxPdfErstellenClicked(self, checked):
@@ -1003,21 +1010,6 @@ class MainWindow(QMainWindow):
                 gd.addZeile("6303", "pdf")
                 gd.addZeile("6304", "Marcumar-Dosierungsplan")
                 gd.addZeile("6305", os.path.join(basedir, "pdf/inr_temp.pdf"))
-
-            # Wochentagsübertragung
-            wochentagszeile = ""
-            if self.wochentageAnzeigen:
-                lzVor = ""
-                for i in range(int(self.lzVor)):
-                    lzVor += " "
-                lzNach = ""
-                for i in range(int(self.lzNach)):
-                    lzNach += " "
-                wochentagszeile = "INR"
-                if not self.halbstatt05:
-                    for wt in self.wochentage:
-                        wochentagszeile += lzVor + wt + lzNach
-                gd.addZeile("6220", wochentagszeile)
             
             untWt = self.untersuchungsdatum.dayOfWeek() # Montag = 1, Sonntag = 7
             montagDerUntersuchungswoche = self.untersuchungsdatum.addDays(1 - untWt)
@@ -1027,7 +1019,55 @@ class MainWindow(QMainWindow):
             bisDatum = "{:>02}".format(str(sonntagDerUntersuchungswoche.day())) + "." + "{:>02}".format(str(sonntagDerUntersuchungswoche.month())) + "." + str(sonntagDerUntersuchungswoche.year())
             moFolgeDatum = "{:>02}".format(str(montagDerFolgewoche.day())) + "." + "{:>02}".format(str(montagDerFolgewoche.month())) + "." + str(montagDerFolgewoche.year())
             
-            # Befund
+            wochendosis = 0
+            wochentagdosen = []
+            folgewochendosis = 0
+            folgewochentagdosen = []
+            nichtAlleWochentage = False
+            for wt in range(7):
+                for dosis in range(len(self.dosen)):
+                    if self.pushButtonDosen[dosis][wt].isChecked():
+                        wochentagdosen.append("{:.2f}".format(float(self.dosen[dosis])).replace(".", ","))
+                        wochendosis += float(self.dosen[dosis])
+                if len(wochentagdosen) != wt + 1:
+                    nichtAlleWochentage = True
+                    wochentagdosen.append("0,00")
+            wochendosenFormatiert = wochentagdosen.copy()
+            wochendosisFormatiert = "{:.2f}".format(wochendosis).replace(".", ",")
+            if self.pushButtonFolgewocheAktivieren.isChecked():
+                for wt in range(7):
+                    for dosis in range(len(self.dosen)):
+                        if self.comboBoxFolgewoche[wt].currentIndex() == dosis:
+                            folgewochentagdosen.append("{:.2f}".format(float(self.dosen[dosis])).replace(".", ","))
+                            folgewochendosis += float(self.dosen[dosis])
+            folgewochentagdosenFormatiert = folgewochentagdosen.copy()
+            folgewochendosisFormatiert = "{:.2f}".format(folgewochendosis).replace(".", ",")
+            if self.halbStatt05:
+                for i in range(7):
+                    wochendosenFormatiert[i] = wochentagdosen[i].replace(",25", "\u00bc").replace(",50", "\u00bd").replace(",75", "\u00be").replace("0", "").replace(",", "")
+                wochendosisFormatiert = wochendosisFormatiert.replace(",25", "\u00bc").replace(",50", "\u00bd").replace(",75", "\u00be").replace("0", "").replace(",", "")
+                if self.pushButtonFolgewocheAktivieren.isChecked():
+                    for i in range(7):
+                        folgewochentagdosenFormatiert[i] = folgewochentagdosen[i].replace(",25", "\u00bc").replace(",50", "\u00bd").replace(",75", "\u00be").replace("0", "").replace(",", "")
+                    folgewochendosisFormatiert = folgewochendosisFormatiert.replace(",25", "\u00bc").replace(",50", "\u00bd").replace(",75", "\u00be").replace("0", "").replace(",", "")
+
+            # Wochentagszeile
+            wochentagszeile = ""
+            if self.wochentageAnzeigen:
+                lzVor = ""
+                for i in range(int(self.lzVor)):
+                    lzVor += " "
+                lzNach = ""
+                for i in range(int(self.lzNach)):
+                    lzNach += " "
+                wochentagszeile = "INR"
+                if not self.halbStatt05:
+                    for wt in self.wochentage:
+                        wochentagszeile += lzVor + wt + lzNach
+
+            # GDT-Befundzeile
+            if self.wochentageAnzeigen:
+                gd.addZeile("6220", wochentagszeile)
             inrNachkommastellen = 0
             if len(self.lineEditInr.text().replace(".", ",").split(",")) > 1:
                 inrNachkommastellen = len(self.lineEditInr.text().replace(".", ",").split(",")[1])
@@ -1037,23 +1077,6 @@ class MainWindow(QMainWindow):
             elif inrNachkommastellen == 2:
                 befundzeile = "{:.2f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",")
             befundzeile += "     "
-            wochendosis = 0
-            wochendosen = []
-            nichtAlleWochentage = False
-            for wt in range(7):
-                for dosis in range(len(self.dosen)):
-                    if self.pushButtonDosen[dosis][wt].isChecked():
-                        wochendosen.append("{:.2f}".format(float(self.dosen[dosis])).replace(".", ","))
-                        wochendosis += float(self.dosen[dosis])
-                if len(wochendosen) != wt + 1:
-                    nichtAlleWochentage = True
-                    wochendosen.append("0,00")
-            wochendosenFormatiert = wochendosen.copy()
-            wochendosisFormatiert = "{:.2f}".format(wochendosis).replace(".", ",")
-            if self.halbstatt05:
-                for i in range(len(wochendosen)):
-                    wochendosenFormatiert[i] = wochendosen[i].replace(",25", "\u00bc").replace(",50", "\u00bd").replace(",75", "\u00be").replace("0", "").replace(",", "")
-                wochendosisFormatiert = wochendosisFormatiert.replace(",25", "\u00bc").replace(",50", "\u00bd").replace(",75", "\u00be").replace("0", "").replace(",", "")
             befundzeile += "  -  ".join(wochendosenFormatiert)
             externBenutzer = self.benutzerkuerzelListe[self.aktuelleBenuztzernummer]
             if self.checkBoxExtern.isChecked():
@@ -1062,26 +1085,20 @@ class MainWindow(QMainWindow):
             if self.pushButtonFolgewocheAktivieren.isChecked():
                 gd.addZeile("6220", vonDatum + " - " + bisDatum + ":")
             gd.addZeile("6220", befundzeile)
-            wochendosenFolgewoche = []
-            wochendosisFolgewoche = 0
+
+            # GDT-Befundzeile Folgewoche
             if self.pushButtonFolgewocheAktivieren.isChecked():
                 gd.addZeile("6220", "Ab " + moFolgeDatum + ":")
-                gd.addZeile("6220", wochentagszeile)
-                if inrNachkommastellen == 1:
-                    befundzeile = "{:.1f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",")
-                elif inrNachkommastellen == 2:
-                    befundzeile = "{:.2f}".format(float(self.lineEditInr.text().replace(",", "."))).replace(".", ",")
-                befundzeile += "     "
-                for wt in range(7):
-                    wochendosenFolgewoche.append("{:.2f}".format(float(self.dosen[self.comboBoxFolgewoche[wt].currentIndex()])).replace(".", ","))
-                    wochendosisFolgewoche += float(self.dosen[self.comboBoxFolgewoche[wt].currentIndex()])
-                befundzeile += "  -  ".join(wochendosenFolgewoche)
-                befundzeile += "  WD: " + "{:.2f}".format(wochendosisFolgewoche).replace(".", ",") + " (" + externBenutzer + ")"
+                if self.wochentageAnzeigen:
+                    gd.addZeile("6220", wochentagszeile[3 + len(lzVor):]) # ohne INR
+                befundzeile = "  -  ".join(folgewochentagdosenFormatiert)
+                befundzeile += "  WD: " + folgewochendosisFormatiert
                 gd.addZeile("6220", befundzeile)
             
-            # Benutzer
+            # Bemerkungen
             gd.addZeile("6227", self.textEditBemerkungen.toPlainText())
             logger.logger.info("Befund und Kommentar erzeugt")
+
             datenSendenOk = True
             if nichtAlleWochentage:
                 mb = QMessageBox(QMessageBox.Icon.Question, "Hinweis von InrGDT", "Nicht für jeden Wochentag wurde eine Dosis angegeben.\nSollen die Daten dennoch übertragen werden? In diesem Fall wird die Dosis an den betroffenen Wochentagen auf 0 gesetzt.", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
@@ -1107,6 +1124,7 @@ class MainWindow(QMainWindow):
                 if self.checkBoxPdfErstellen.isChecked():
                     logger.logger.info("PDF-Erstellung aktiviert")
                     pdf = inrPdf.geriasspdf ("P", "mm", "A4")
+                    pdf.set_fill_color(230,230,230)
                     logger.logger.info("FPDF-Instanz erzeugt")
                     pdf.add_page()
                     pdf.set_font("helvetica", "", 14)
@@ -1129,45 +1147,94 @@ class MainWindow(QMainWindow):
                         pdf.leerzeile(2)
                         pdf.cell(0, 4, "INR-Zielbereich: " + self.lineEditInrzielVon.text().replace(".", ",") + " - " + self.lineEditInrzielBis.text().replace(".", ","), align="C", new_x="LMARGIN", new_y="NEXT")
                     pdf.leerzeile(10)
-                    if self.pushButtonFolgewocheAktivieren.isChecked():
-                        x = 10
-                    else:
-                        x = 35
+                    x = 35
                     pdf.set_x(x)
                     pdf.set_font("helvetica", "B", 16)
-                    if self.pushButtonFolgewocheAktivieren.isChecked():
+                    # Anzahl Wochenzeilen
+                    diffTage = self.untersuchungsdatum.daysTo(self.naechsteKontrolle)
+                    anzahlWochenzeilen = 0
+                    if diffTage > 0:
+                        if (7 - self.untersuchungsdatum.dayOfWeek()) <= 0:
+                            anzahlWochenzeilen += 1
+                        anzahlWochenzeilen += math.ceil(diffTage / 7)
+                    if  (diffTage > 0 and self.pdfMehrereWochen) or self.pushButtonFolgewocheAktivieren.isChecked():
+                        x = 10
+                        pdf.set_x(x)
                         pdf.cell(50, 16, "Zeitraum", border=1, align="C")
-
                     for wt in range(7):
-                        if wt < 6:
-                            pdf.cell(20, 16, self.wochentage[wt], border=1, align="C")
-                        else:
-                            pdf.cell(20, 16, self.wochentage[wt], border=1, align="C", new_x="LMARGIN", new_y="NEXT")
+                        pdf.cell(20, 16, self.wochentage[wt], border=1, align="C")
+                    pdf.set_y(pdf.get_y() + 16)
                     pdf.set_x(x)
                     pdf.set_font("helvetica", "", 16)
                     if self.pushButtonFolgewocheAktivieren.isChecked():
-                        pdf.cell(50, 7, " " + vonDatum + " -", border="TLR", new_y="NEXT",)
+                        pdf.cell(50, 7, " " + vonDatum + " -", border="TLR", new_y="NEXT")
                         pdf.set_x(x)
                         pdf.cell(50, 7, " " + bisDatum, border="BLR")
                         pdf.set_y(pdf.get_y() - 7)
                         pdf.set_x(x + 50)
-                    for wt in range(7):
-                        if wt < 6:
-                            if wochendosen[wt] != "0,00":
-                                pdf.cell(20, 14, wochendosen[wt].replace(",25", "\u00bc").replace(",50", "\u00bd").replace(",75", "\u00be").replace(",", "").replace("0", ""), border=1, align="C")
+                        for wt in range(7): # Korrekturwoche als erste Dosierungszeile
+                            if wochentagdosen[wt] != "0,00":
+                                pdf.cell(20, 14, wochentagdosen[wt].replace(",25", "\u00bc").replace(",50", "\u00bd").replace(",75", "\u00be").replace(",", "").replace("0", ""), border=1, align="C")
                             else:
                                 pdf.cell(20, 14, "0", border=1, align="C")
+                        pdf.set_y(pdf.get_y() + 14)
+                        if self.pdfMehrereWochen and diffTage > 0:
+                            for awz in range(1, anzahlWochenzeilen):
+                                vonDatum = "{:>02}".format(str(montagDerUntersuchungswoche.addDays(awz * 7).day())) + "." + "{:>02}".format(str(montagDerUntersuchungswoche.addDays(awz * 7).month())) + "." + str(montagDerUntersuchungswoche.addDays(awz * 7).year())
+                                bisDatum = "{:>02}".format(str(sonntagDerUntersuchungswoche.addDays(awz * 7).day())) + "." + "{:>02}".format(str(sonntagDerUntersuchungswoche.addDays(awz * 7).month())) + "." + str(sonntagDerUntersuchungswoche.addDays(awz * 7).year())
+                                pdf.cell(50, 7, " " + vonDatum + " -", border="TLR", new_y="NEXT")
+                                pdf.set_x(x)
+                                pdf.cell(50, 7, " " + bisDatum, border="BLR")
+                                pdf.set_y(pdf.get_y() - 7)
+                                pdf.set_x(x + 50)
+                                for wt in range(7):
+                                    if self.untersuchungsdatum.daysTo(montagDerUntersuchungswoche.addDays(awz * 7 + wt)) == self.untersuchungsdatum.daysTo(self.naechsteKontrolle):
+                                        pdf.cell(20, 7, self.comboBoxFolgewoche[wt].currentText(), border="TLR", align="C", fill=True, new_y="NEXT")
+                                        pdf.set_x(pdf.get_x() - 20)
+                                        pdf.set_font("helvetica", "", 10)
+                                        pdf.cell(20, 7, "Kontrolle", border="BLR", align="C", fill=True)
+                                        pdf.set_font("helvetica", "", 16)
+                                        pdf.set_y(pdf.get_y() - 7)
+                                        pdf.set_x(x + 50 + (wt + 1) * 20)
+                                    else:
+                                        pdf.cell(20, 14, self.comboBoxFolgewoche[wt].currentText(), border=1, align="C")
+                                pdf.set_y(pdf.get_y() + 14)
                         else:
-                            if wochendosen[wt] != "0,00":
-                                pdf.cell(20, 14, wochendosen[wt].replace(",25", "\u00bc").replace(",50", "\u00bd").replace(",75", "\u00be").replace(",", "").replace("0", ""), border=1, align="C", new_x="LMARGIN", new_y="NEXT")
-                            else:
-                                pdf.cell(20, 14, "0", border=1, align="C", new_x="LMARGIN", new_y="NEXT")
-                    if self.pushButtonFolgewocheAktivieren.isChecked():
-                        pdf.set_x(x)
-                        pdf.cell(50, 14, " Ab " + moFolgeDatum, border=1)
-                        for wt in range(7):
-                            pdf.cell(20, 14, self.comboBoxFolgewoche[wt].currentText(), border=1, align="C")
-                        pdf.cell(0, 10, new_x="LMARGIN", new_y="NEXT")
+                            pdf.set_x(x)
+                            pdf.cell(50, 14, " Ab " + moFolgeDatum, border=1)
+                            for wt in range(7):
+                                pdf.cell(20, 14, self.comboBoxFolgewoche[wt].currentText(), border=1, align="C")
+                            pdf.set_y(pdf.get_y() + 14)
+                    else: # Ohne Folgewoche
+                        if self.pdfMehrereWochen and diffTage > 0:
+                            for awz in range(anzahlWochenzeilen):
+                                vonDatum = "{:>02}".format(str(montagDerUntersuchungswoche.addDays(awz * 7).day())) + "." + "{:>02}".format(str(montagDerUntersuchungswoche.addDays(awz * 7).month())) + "." + str(montagDerUntersuchungswoche.addDays(awz * 7).year())
+                                bisDatum = "{:>02}".format(str(sonntagDerUntersuchungswoche.addDays(awz * 7).day())) + "." + "{:>02}".format(str(sonntagDerUntersuchungswoche.addDays(awz * 7).month())) + "." + str(sonntagDerUntersuchungswoche.addDays(awz * 7).year())
+                                pdf.cell(50, 7, " " + vonDatum + " -", border="TLR", new_y="NEXT")
+                                pdf.set_x(x)
+                                pdf.cell(50, 7, " " + bisDatum, border="BLR")
+                                pdf.set_y(pdf.get_y() - 7)
+                                pdf.set_x(x + 50)
+                                for wt in range(7):
+                                    dosis = wochentagdosen[wt].replace(",25", "\u00bc").replace(",50", "\u00bd").replace(",75", "\u00be").replace(",", "").replace("0", "")
+                                    if wochentagdosen[wt] == "0,00":
+                                        dosis = "0"
+                                    if self.untersuchungsdatum.daysTo(montagDerUntersuchungswoche.addDays(awz * 7 + wt)) == self.untersuchungsdatum.daysTo(self.naechsteKontrolle):
+                                        pdf.cell(20, 7, dosis, border="TLR", align="C", fill=True, new_y="NEXT")
+                                        pdf.set_x(pdf.get_x() - 20)
+                                        pdf.set_font("helvetica", "", 10)
+                                        pdf.cell(20, 7, "Kontrolle", border="BLR", align="C", fill=True)
+                                        pdf.set_font("helvetica", "", 16)
+                                        pdf.set_y(pdf.get_y() - 7)
+                                        pdf.set_x(x + 50 + (wt + 1) * 20)
+                                    else:
+                                        pdf.cell(20, 14, dosis, border=1, align="C")
+                                pdf.set_y(pdf.get_y() + 14)
+                        else:
+                            pdf.set_x(x)
+                            for wt in range(7):
+                                pdf.cell(20, 14, wochentagdosen[wt].replace(",25", "\u00bc").replace(",50", "\u00bd").replace(",75", "\u00be").replace(",", "").replace("0", ""), border=1, align="C")
+                            pdf.set_y(pdf.get_y() + 14)
 
                     # Ggf. Bemerkungen
                     if self.bemerkungenAufPdf and self.textEditBemerkungen.toPlainText() != "":
@@ -1207,7 +1274,7 @@ class MainWindow(QMainWindow):
                         logger.logger.info("Allgemein/immerextern in config.ini auf " + str(self.checkBoxExtern.isChecked()) + " gesetzt")
                         logger.logger.info("Allgemein/immerpdf in config.ini auf " + str(self.checkBoxPdfErstellen.isChecked()) + " gesetzt")
                     # Archivieren
-                    zusammenfassung = untersuchungsdatum + "::" + "::".join(wochendosen)
+                    zusammenfassung = untersuchungsdatum + "::" + "::".join(wochentagdosen)
                     if self.pushButtonFolgewocheAktivieren.isChecked():
                         folgewochendosen = []
                         for wt in range(7):

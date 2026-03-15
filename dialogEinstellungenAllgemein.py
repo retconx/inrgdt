@@ -1,5 +1,5 @@
 import configparser, os, re, sys
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, Qt, QFontMetrics
 from PySide6.QtWidgets import (
     QDialogButtonBox,
     QDialog,
@@ -37,6 +37,8 @@ class EinstellungenAllgemein(QDialog):
         self.autoupdate = configIni["Allgemein"]["autoupdate"] == "True"
         self.updaterpfad = configIni["Allgemein"]["updaterpfad"]
         self.halbStatt05 = configIni["Allgemein"]["halbstatt05"] == "True"
+        self.pdfMehrereWochen = configIni["Allgemein"]["pdfmehrerewochen"] == "True"
+        self.zeichensatz = configIni["GDT"]["zeichensatz"]
 
         self.setWindowTitle("Allgemeine Einstellungen")
         self.buttonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
@@ -47,8 +49,8 @@ class EinstellungenAllgemein(QDialog):
         dialogLayoutV = QVBoxLayout()
         # Groupbox Wochentagsübertragung
         groupboxLayoutWochentagsUebertragungG = QGridLayout()
-        groupBoxWochentagsUebertragung = QGroupBox("Wochentagsübertragung")
-        groupBoxWochentagsUebertragung.setFont(self.fontBold)
+        self.groupBoxWochentagsUebertragung = QGroupBox("Wochentagsübertragung")
+        self.groupBoxWochentagsUebertragung.setFont(self.fontBold)
         self.checkBoxWochentagsuebertragungAktivieren = QCheckBox("Aktivieren")
         self.checkBoxWochentagsuebertragungAktivieren.setFont(self.fontNormal)
         self.checkBoxWochentagsuebertragungAktivieren.setChecked(self.wochentageAnzeigen)
@@ -74,17 +76,35 @@ class EinstellungenAllgemein(QDialog):
         groupboxLayoutWochentagsUebertragungG.addWidget(labelLeerzeichenNach, 2, 2, 1, 1)
         groupboxLayoutWochentagsUebertragungG.addWidget(self.lineEditLeerzeichenNach, 2, 3, 1, 1)
         groupboxLayoutWochentagsUebertragungG.addWidget(labelWochentagLegende, 3, 0, 1, 4)
-        groupBoxWochentagsUebertragung.setLayout(groupboxLayoutWochentagsUebertragungG)
+        self.groupBoxWochentagsUebertragung.setLayout(groupboxLayoutWochentagsUebertragungG)
 
         # Darstellung in Karteikarte
         groupboxLayoutDarstellungKarteikarteG = QGridLayout()
         groupboxDarstellungKarteikarte = QGroupBox("Darstellung in Karteikarte")
         groupboxDarstellungKarteikarte.setFont(self.fontBold)
-        self.checkboxHalbStatt05 = QCheckBox("\u00bd statt 0,25, \u00bc  statt 0,50, \u00be statt 0,75 ohne Wochentagsanzeige (Mo Di Mi...\n(nur mit Zeichensatz ISO8859-1 möglich)")
+        self.checkboxHalbStatt05 = QCheckBox("\u00bd statt 0,25, \u00bc  statt 0,50, \u00be statt 0,75 ohne Wochentagsanzeige Mo Di Mi...\n(nur mit Zeichensatz ISO8859-1 möglich)")
         self.checkboxHalbStatt05.setFont(self.fontNormal)
-        self.checkboxHalbStatt05.setChecked(self.halbStatt05)
+        self.checkboxHalbStatt05.clicked.connect(self.checkboxHalbStatt05Checked)
+        if self.zeichensatz == "3":
+            self.checkboxHalbStatt05.setChecked(self.halbStatt05)
+            self.groupBoxWochentagsUebertragung.setEnabled(not self.halbStatt05)
+        else:
+            groupboxDarstellungKarteikarte.setEnabled(False)
         groupboxLayoutDarstellungKarteikarteG.addWidget(self.checkboxHalbStatt05)
         groupboxDarstellungKarteikarte.setLayout(groupboxLayoutDarstellungKarteikarteG)
+
+        # Darstellung auf PDF-Plan
+        groupboxLayoutDarstellungPdfPlanG = QGridLayout()
+        groupboxLayoutDarstellungPdfPlanG.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        groupboxDarstellungPdfPlan = QGroupBox("Darstellung auf PDF-Plan")
+        groupboxDarstellungPdfPlan.setFont(self.fontBold)
+        labelPdfWochenanzahl = QLabel("Anzahl Wochen:")
+        labelPdfWochenanzahl.setFont(self.fontNormal)
+        self.checkBoxWochenanzeigeBisKontrolle = QCheckBox("Wochenanzeige bis zum Kontrolltermin")
+        self.checkBoxWochenanzeigeBisKontrolle.setFont(self.fontNormal)
+        self.checkBoxWochenanzeigeBisKontrolle.setChecked(self.pdfMehrereWochen)
+        groupboxLayoutDarstellungPdfPlanG.addWidget(self.checkBoxWochenanzeigeBisKontrolle, 0, 0)
+        groupboxDarstellungPdfPlan.setLayout(groupboxLayoutDarstellungPdfPlanG)
 
         # Groupbox Einrichtung
         groupboxLayoutEinrichtungG = QGridLayout()
@@ -143,8 +163,9 @@ class EinstellungenAllgemein(QDialog):
         groupBoxUpdatesLayoutG.addWidget(self.checkBoxAutoUpdate, 1, 0)
         groupBoxUpdates.setLayout(groupBoxUpdatesLayoutG)
 
-        dialogLayoutV.addWidget(groupBoxWochentagsUebertragung)
+        dialogLayoutV.addWidget(self.groupBoxWochentagsUebertragung)
         dialogLayoutV.addWidget(groupboxDarstellungKarteikarte)
+        dialogLayoutV.addWidget(groupboxDarstellungPdfPlan)
         dialogLayoutV.addWidget(groupboxEinrichtung)
         dialogLayoutV.addWidget(groupboxArchivierung)
         dialogLayoutV.addWidget(groupBoxUpdates)
@@ -154,6 +175,9 @@ class EinstellungenAllgemein(QDialog):
     def checkBoxWochentagsuebertragungAktivierenChanged(self):
         self.lineEditLeerzeichenVor.setEnabled(self.checkBoxWochentagsuebertragungAktivieren.isChecked())
         self.lineEditLeerzeichenNach.setEnabled(self.checkBoxWochentagsuebertragungAktivieren.isChecked())
+
+    def checkboxHalbStatt05Checked(self, checked):
+        self.groupBoxWochentagsUebertragung.setEnabled(not checked)
 
     def durchsuchenArchivierungsverzeichnis(self):
         fd = QFileDialog(self)
