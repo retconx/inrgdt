@@ -1152,11 +1152,7 @@ class MainWindow(QMainWindow):
                     pdf.set_font("helvetica", "B", 16)
                     # Anzahl Wochenzeilen
                     diffTage = self.untersuchungsdatum.daysTo(self.naechsteKontrolle)
-                    anzahlWochenzeilen = 0
-                    if diffTage > 0:
-                        if (7 - self.untersuchungsdatum.dayOfWeek()) <= 0:
-                            anzahlWochenzeilen += 1
-                        anzahlWochenzeilen += math.ceil(diffTage / 7)
+                    anzahlWochenzeilen = math.ceil((diffTage + self.untersuchungsdatum.dayOfWeek()) / 7)
                     if  (diffTage > 0 and self.pdfMehrereWochen) or self.pushButtonFolgewocheAktivieren.isChecked():
                         x = 10
                         pdf.set_x(x)
