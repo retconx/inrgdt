@@ -13,7 +13,7 @@ class EinstellungenDosierung(QDialog):
 
         #config.ini lesen
         configIni = configparser.ConfigParser()
-        configIni.read(os.path.join(configPath, "config.ini"))
+        configIni.read(os.path.join(configPath, "config.ini"), encoding="utf-8")
         self.dosen = configIni["Marcumar"]["dosen"].split("::")
         self.setWindowTitle("Dosierungen verwalten")
         self.buttonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)

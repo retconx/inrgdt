@@ -27,7 +27,7 @@ class EinstellungenAllgemein(QDialog):
 
         #config.ini lesen
         configIni = configparser.ConfigParser()
-        configIni.read(os.path.join(configPath, "config.ini"))
+        configIni.read(os.path.join(configPath, "config.ini"), encoding="utf-8")
         self.einrichtungsname = configIni["Allgemein"]["einrichtungsname"]
         self.archivierungspfad = configIni["Allgemein"]["archivierungspfad"]
         self.vorherigeDokuLaden = configIni["Allgemein"]["vorherigedokuladen"]

@@ -77,7 +77,6 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.maxBenutzerzahl = 20
         self.standardpalette = self.palette()
 
         # config.ini lesen
@@ -115,7 +114,7 @@ class MainWindow(QMainWindow):
             mb = QMessageBox(QMessageBox.Icon.Critical, "Hinweis von InrGDT", "Die Konfigurationsdatei config.ini fehlt. InrGDT kann nicht gestartet werden.", QMessageBox.StandardButton.Ok)
             mb.exec()
             sys.exit()
-        self.configIni.read(os.path.join(self.configPath, "config.ini"))
+        self.configIni.read(os.path.join(self.configPath, "config.ini"), encoding="utf-8")
         self.version = self.configIni["Allgemein"]["version"]
         self.immerextern = self.configIni["Allgemein"]["immerextern"] == "True"
         self.gdtImportVerzeichnis = self.configIni["GDT"]["gdtimportverzeichnis"]
@@ -189,7 +188,7 @@ class MainWindow(QMainWindow):
         if len(self.lizenzschluessel) == 29:
             logger.logger.info("Lizenzschlüssel unverschlüsselt")
             self.configIni["Erweiterungen"]["lizenzschluessel"] = gdttoolsL.GdtToolsLizenzschluessel.krypt(self.lizenzschluessel)
-            with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
+            with open(os.path.join(self.configPath, "config.ini"), "w", encoding="utf-8") as configfile:
                     self.configIni.write(configfile)
         else:
             self.lizenzschluessel = gdttoolsL.GdtToolsLizenzschluessel.dekrypt(self.lizenzschluessel)
@@ -202,7 +201,7 @@ class MainWindow(QMainWindow):
             if de.checkBoxZustimmung.isChecked():
                 self.eulagelesen = True
                 self.configIni["Allgemein"]["eulagelesen"] = "True"
-                with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
+                with open(os.path.join(self.configPath, "config.ini"), "w", encoding="utf-8") as configfile:
                     self.configIni.write(configfile)
                 logger.logger.info("EULA zugestimmt")
             else:
@@ -268,7 +267,7 @@ class MainWindow(QMainWindow):
                     self.configIni["Allgemein"]["pdfmehrerewochen"] = "False"
                 ## /config.ini aktualisieren
 
-                with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
+                with open(os.path.join(self.configPath, "config.ini"), "w", encoding="utf-8") as configfile:
                     self.configIni.write(configfile)
                 self.version = self.configIni["Allgemein"]["version"]
                 logger.logger.info("Version auf " + self.version + " aktualisiert")
@@ -277,7 +276,7 @@ class MainWindow(QMainWindow):
                 de.exec()
                 self.eulagelesen = de.checkBoxZustimmung.isChecked()
                 self.configIni["Allgemein"]["eulagelesen"] = str(self.eulagelesen)
-                with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
+                with open(os.path.join(self.configPath, "config.ini"), "w", encoding="utf-8") as configfile:
                     self.configIni.write(configfile)
                 if self.eulagelesen:
                     logger.logger.info("EULA zugestimmt")
@@ -779,7 +778,7 @@ class MainWindow(QMainWindow):
     def autoUpdatePruefung(self, checked):
         self.autoupdate = checked
         self.configIni["Allgemein"]["autoupdate"] = str(checked)
-        with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
+        with open(os.path.join(self.configPath, "config.ini"), "w", encoding="utf-8") as configfile:
             self.configIni.write(configfile)
 
     def ueberInrGdt(self):
@@ -822,7 +821,7 @@ class MainWindow(QMainWindow):
             self.configIni["Allgemein"]["autoupdate"] = str(de.checkBoxAutoUpdate.isChecked())
             self.configIni["Allgemein"]["halbstatt05"] = str(de.checkboxHalbStatt05.isChecked())
             self.configIni["Allgemein"]["pdfmehrerewochen"] = str(de.checkBoxWochenanzeigeBisKontrolle.isChecked())
-            with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
+            with open(os.path.join(self.configPath, "config.ini"), "w", encoding="utf-8") as configfile:
                 self.configIni.write(configfile)
             if neustartfrage:
                 mb = QMessageBox(QMessageBox.Icon.Question, "Hinweis von InrGDT", "Damit die Einstellungsänderungen wirksam werden, sollte InrGDT neu gestartet werden.\nSoll InrGDT jetzt neu gestartet werden?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
@@ -842,7 +841,7 @@ class MainWindow(QMainWindow):
             self.configIni["GDT"]["kuerzelinrgdt"] = de.lineEditInrGdtKuerzel.text()
             self.configIni["GDT"]["kuerzelpraxisedv"] = de.lineEditPraxisEdvKuerzel.text()
             self.configIni["GDT"]["zeichensatz"] = str(de.aktuelleZeichensatznummer + 1)
-            with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
+            with open(os.path.join(self.configPath, "config.ini"), "w", encoding="utf-8") as configfile:
                 self.configIni.write(configfile)
             if neustartfrage:
                 mb = QMessageBox(QMessageBox.Icon.Question, "Hinweis von InrGDT", "Damit die Einstellungsänderungen wirksam werden, sollte InrGDT neu gestartet werden.\nSoll InrGDT jetzt neu gestartet werden?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
@@ -857,13 +856,13 @@ class MainWindow(QMainWindow):
         if de.exec() == 1:
             namen = []
             kuerzel = []
-            for i in range(self.maxBenutzerzahl):
+            for i in range(de.anzahlBenutzerzeilen):
                 if de.lineEditNamen[i].text() != "":
                     namen.append(de.lineEditNamen[i].text())
                     kuerzel.append(de.lineEditKuerzel[i].text())
             self.configIni["Benutzer"]["namen"] = "::".join(namen)
             self.configIni["Benutzer"]["kuerzel"] = "::".join(kuerzel)
-            with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
+            with open(os.path.join(self.configPath, "config.ini"), "w", encoding="utf-8") as configfile:
                 self.configIni.write(configfile)
             if neustartfrage:
                 mb = QMessageBox(QMessageBox.Icon.Question, "Hinweis von InrGDT", "Damit die Einstellungsänderungen wirksam werden, sollte InrGDT neu gestartet werden.\nSoll InrGDT jetzt neu gestartet werden?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
@@ -883,7 +882,7 @@ class MainWindow(QMainWindow):
                     if de.checkBoxDosierungen[zeile][spalte].isChecked():
                         self.dosen.append(de.dosierungen[zeile][spalte])
             self.configIni["Marcumar"]["dosen"] = "::".join(self.dosen)
-            with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
+            with open(os.path.join(self.configPath, "config.ini"), "w", encoding="utf-8") as configfile:
                 self.configIni.write(configfile)
             if neustartfrage:
                 mb = QMessageBox(QMessageBox.Icon.Question, "Hinweis von InrGDT", "Damit die Einstellungsänderungen wirksam werden, sollte InrGDT neu gestartet werden.\nSoll InrGDT jetzt neu gestartet werden?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
@@ -899,7 +898,7 @@ class MainWindow(QMainWindow):
         if de.exec() == 1:
             self.configIni["Erweiterungen"]["lanr"] = de.lineEditLanr.text()
             self.configIni["Erweiterungen"]["lizenzschluessel"] = gdttoolsL.GdtToolsLizenzschluessel.krypt(de.lineEditLizenzschluessel.text())
-            with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
+            with open(os.path.join(self.configPath, "config.ini"), "w", encoding="utf-8") as configfile:
                 self.configIni.write(configfile)
             if neustartfrage:
                 mb = QMessageBox(QMessageBox.Icon.Question, "Hinweis von InrGDT", "Damit die Einstellungsänderungen wirksam werden, sollte InrGDT neu gestartet werden.\nSoll InrGDT jetzt neu gestartet werden?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
@@ -1265,7 +1264,7 @@ class MainWindow(QMainWindow):
                 self.configIni["Allgemein"]["bemerkungenaufpdf"] = str(self.checkBoxBemerkungenAufPdf.isChecked())
                 self.configIni["Benutzer"]["letzter"] = str(self.aktuelleBenuztzernummer)
                 try:
-                    with open(os.path.join(self.configPath, "config.ini"), "w") as configfile:
+                    with open(os.path.join(self.configPath, "config.ini"), "w", encoding="utf-8") as configfile:
                         self.configIni.write(configfile)
                         logger.logger.info("Allgemein/immerextern in config.ini auf " + str(self.checkBoxExtern.isChecked()) + " gesetzt")
                         logger.logger.info("Allgemein/immerpdf in config.ini auf " + str(self.checkBoxPdfErstellen.isChecked()) + " gesetzt")
