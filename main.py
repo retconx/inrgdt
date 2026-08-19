@@ -114,7 +114,22 @@ class MainWindow(QMainWindow):
             mb = QMessageBox(QMessageBox.Icon.Critical, "Hinweis von InrGDT", "Die Konfigurationsdatei config.ini fehlt. InrGDT kann nicht gestartet werden.", QMessageBox.StandardButton.Ok)
             mb.exec()
             sys.exit()
-        self.configIni.read(os.path.join(self.configPath, "config.ini"), encoding="utf-8")
+        # config.ini ggf. in utf-8 wandeln ab 1.10.3
+        try:
+            self.configIni.read(os.path.join(self.configPath, "config.ini"), encoding="utf-8")
+        except UnicodeDecodeError as e:
+            logger.logger.error("Unicode Decode Error beim Laden der config.ini mit utf-8")
+            try:
+                self.configIni.read(os.path.join(self.configPath, "config.ini"))
+            except UnicodeDecodeError as e:
+                logger.logger.error("Unicode Decode Error beim Laden der config.ini mit Standard-Encoding")
+                try:
+                    self.configIni.read(os.path.join(self.configPath, "config.ini"), encoding="cp1252")
+                except UnicodeDecodeError as e:
+                    logger.logger.error("Unicode Decode Error beim Laden der config.ini mit cp1252")
+            with open(os.path.join(self.configPath, "config.ini"), "w", encoding="utf-8") as configfile:
+                self.configIni.write(configfile)
+            logger.logger.info("config.ini mit utf-8 gespeichert")
         self.version = self.configIni["Allgemein"]["version"]
         self.immerextern = self.configIni["Allgemein"]["immerextern"] == "True"
         self.gdtImportVerzeichnis = self.configIni["GDT"]["gdtimportverzeichnis"]
